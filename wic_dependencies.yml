@@ -1,0 +1,41 @@
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+# Keep the python constraint in case we want to install pypy.
+  - "python<3.11"
+# NOTE: cwltool needs nodejs for InlineJavascriptRequirement
+  - nodejs
+  - graphviz
+# "Warning: Could not load "/miniconda/bin/../lib/graphviz/libgvplugin_pango.so.6"
+#  - It was found, so perhaps one of its dependents was not.  Try ldd."
+# See https://github.com/conda-forge/graphviz-feedstock/issues/35#issuecomment-786368065
+  - xorg-libxrender
+  - shellcheck
+# wget and zip cause errors in the setup-miniconda github action on windows.
+  - wget
+  - zip
+# scipy is only used for least_squares fitting in the tests, but
+# it needs to build binary wheels.
+  - scipy
+# NOTE: Although wic doesn't have an explicit dependency on numpy, several
+# issues arise when numpy is installed as a transitive dependency of matplotlib.
+# On linux and macos, using pip to install numpy may cause this error with pytest:
+# "Fatal Python error: Illegal instruction"
+# So we need to explicitly install numpy using conda.
+  - numpy
+# pandas has a build dependency on oldest-supported-numpy, so
+# we have to install both numpy and pandas with conda.
+  - pandas
+# The psutil install guide claims that precompiled binary wheels are available,
+# and that it isn't necessary to install compilers. This does not appear to be
+# correct, so install psutil with conda/mamba so we don't have to install compilers.
+  - psutil
+# Similarly, toil[cwl] depends on ruamel.yaml.clib for performance.
+# Install it with conda/mamba here.
+  - ruamel.yaml.clib
+# Simiarly, cryptography needs to build binary wheels
+  - cryptography
+# Needs binary PyQt5 dependencies.
+  - kubernetes-helm

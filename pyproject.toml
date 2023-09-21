@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "viz-workflow"
+version = "0.1.0"
+description = ""
+authors = ["agerardin <antoine.gerardin@gmail.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+workflow-inference-compiler = {git = "https://github.com/camilovelezr/workflow-inference-compiler.git", rev = "viz"}
+polus-plugins = {git = "https://github.com/PolusAI/polus-plugins"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
