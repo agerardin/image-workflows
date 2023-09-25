@@ -197,7 +197,7 @@ def build_viz_workflow(partial_workflows : list[Workflow], img_path, stitch_path
             PrecomputeSlide.inpDir = ImageAssembler.outDir
             PrecomputeSlide.outDir = outDir
     
-    WFNAME_viz_workflow ="viz_workflow_" + dataset_name
+    WFNAME_viz_workflow ="workflow_viz_" + dataset_name
     viz_workflow = Workflow(steps, WFNAME_viz_workflow, path=wic_path.absolute())
     viz_workflow.compile()
     return viz_workflow
@@ -266,7 +266,7 @@ def configure_download_bbbc_workflow(steps, dataset_name, dataset_path, wic_path
     # TODO ignored by bbcDownload (it only uses the current working dir)
     # output directory after our download
     bbbc_download.outDir = dataset_path.absolute()
-    WFNAME_download= "download_" + dataset_name
+    WFNAME_download= "workflow_download_" + dataset_name
     download_workflow= Workflow(steps, WFNAME_download, path=wic_path.absolute())
     return download_workflow
 
@@ -356,7 +356,7 @@ def configure_convert_workflow_bbbc(
     #TODO ignored if not top-level. Need to be provided at the top level of the working directory
     omeconverter.outDir= out_dir
 
-    WFNAME_convert="convert_" + dataset_name
+    WFNAME_convert="workflow_convert_" + dataset_name
     return Workflow(steps, WFNAME_convert, path=wic_path)
 
 def configure_convert_workflow_nist_mist(
@@ -409,7 +409,7 @@ def configure_convert_workflow_nist_mist(
     omeconverter.fileExtension = ".ome.tif"
     omeconverter.outDir= out_dir
 
-    WFNAME_convert="convert_" + dataset_name
+    WFNAME_convert="workflow_convert_" + dataset_name
     return Workflow(steps, WFNAME_convert, path=wic_path.absolute())
 
 def recycle_stitching_vector(stitch_path : Path, out_dir : Path, prepend : str):
@@ -484,7 +484,7 @@ def configure_montage_workflow_bbbc(
     else :
         raise Exception(f"Montage : dataset not yet supported : {dataset_name}. Add configuration.")
 
-    WFNAME_montage="montage_" + dataset_name
+    WFNAME_montage="workflow_montage_" + dataset_name
     return Workflow(steps, WFNAME_montage, path=wic_path.absolute())
 
 def create_pyramid_workflow(
@@ -539,7 +539,7 @@ def configure_pyramid_workflow(
     # precompute_slide.filePattern = "*.*"
     precompute_slide.outDir = out_dir
 
-    WFNAME_assemble="assemble_and_build_pyramids_" + dataset_name
+    WFNAME_assemble="workflow_assemble_and_build_pyramids_" + dataset_name
     return Workflow(steps, WFNAME_assemble, path=wic_path.absolute())
 
 def create_workflow_steps( 
@@ -567,7 +567,7 @@ def run_workflow(workflow: Workflow, compute_path: Path = None):
     """
     if RUN_LOCAL:
         logger.debug("attempt to run workflow...")
-        workflow.run()
+        workflow.run(True)
     else:
         compute_workflow = create_ict_workflow(workflow)
         utils.save_json(compute_workflow, compute_path / f"{workflow.name}.json")
@@ -632,9 +632,21 @@ def convert_to_ict_workflow(
     for compute_step in compute["steps"]:
         if(COMPUTE_COMPATIBILITY):
             rewrite_io_paths_as_string(compute["steps"][compute_step])
+            rewrite_location_as_path(compute["cwlJobInputs"])
         update_run_with_clt_definition(compute["steps"][compute_step], workflow)
 
     return compute
+
+def rewrite_location_as_path(cwlJobInputs):
+    """
+    NOTE : COMPUTE_COMPATIBILITY
+    Replace Directory `location` attribute with `path`
+    """
+    for input in cwlJobInputs:
+        if isinstance(cwlJobInputs[input],dict) and cwlJobInputs[input]["class"] == "Directory":
+            if cwlJobInputs[input].get("location"):
+                cwlJobInputs[input]["path"] = cwlJobInputs[input]["location"]
+                del cwlJobInputs[input]["location"]
 
 # TODO REMOVE. This is from polus plugins. Polus plugins needs to fix this.
 # The problem being that names are rewritten in polus plugins but the manifest is not updated.
@@ -681,6 +693,9 @@ def update_run_with_clt_definition(compute_step, workflow):
         if cwl_name == step.cwl_name:
             clt_path = step.cwl_path
             clt_file = utils.load_yaml(clt_path)
+            # TODO CHECK an id is necessary for compute to process the step correctly.
+            # we add it.
+            clt_file["id"] = cwl_name
             compute_step["run"] = clt_file
     if not clt_path.exists():
         raise Exception(f"missing plugin cwl {step.cwl_name} in {clt_path}")
@@ -721,16 +736,18 @@ if __name__ == "__main__":
     compute_path = WORKING_DIR / "data" /  Path("compute")
 
     # Set to True to run workflow with wic-provided cwl runner.
-    RUN_LOCAL=True
+    RUN_LOCAL=False
     # Set to True to modify wic-generated workflow to align with Compute restrictions regarding cwl.
     COMPUTE_COMPATIBILITY = True
 
     # For now, we need to provide both a dataset name and matching type
-    dataset_name="BBBC004"
-    # dataset_name="BBBC001"
+    # dataset_name="BBBC004"
+    dataset_name="BBBC001"
     dataset_type = DatasetType.BBBC
     # dataset_name="NIST_MIST"
     # dataset_type = DatasetType.NIST_MIST
+
+    logging.getLogger("WIC Python API").setLevel("DEBUG")
 
     viz_workflow(dataset_name=dataset_name,
                  dataset_type= dataset_type, 
@@ -738,11 +755,11 @@ if __name__ == "__main__":
                  dataset_path = dataset_path,
                  wic_path = wic_path,
                  compute_path = compute_path,
-                 download=False,
+                 download=True,
                  convert=True,
-                 montage=False,
-                 assemble_and_build_pyramid=False,
-                 build_full_viz_workflow=False
+                 montage=True,
+                 assemble_and_build_pyramid=True,
+                 build_full_viz_workflow=True
                  )
     
     
