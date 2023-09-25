@@ -634,8 +634,31 @@ def convert_to_ict_workflow(
             rewrite_io_paths_as_string(compute["steps"][compute_step])
             rewrite_location_as_path(compute["cwlJobInputs"])
         update_run_with_clt_definition(compute["steps"][compute_step], workflow)
+        update_all_paths_on_remote_target(compute["cwlJobInputs"])
 
     return compute
+
+def update_all_paths_on_remote_target(cwlJobInputs):
+    if(COMPUTE_COMPATIBILITY):
+        directory_attr = "path"
+    else: 
+        directory_attr = "location"
+    
+    for input in cwlJobInputs:
+        if isinstance(cwlJobInputs[input],dict) and cwlJobInputs[input]["class"] == "Directory":
+            path : str = cwlJobInputs[input][directory_attr]
+            if path.startswith(WORKING_DIR.as_posix()):
+                argo_compatible_step_name = sanitize_for_compute_argo(get_step_name_from_wic_param(input))
+                target_path = (TARGET_DIR / argo_compatible_step_name).as_posix()
+                cwlJobInputs[input][directory_attr] = path.replace(WORKING_DIR.as_posix(), target_path)
+            else:
+                # TODO we could replace by data from input key
+                cwlJobInputs[input][directory_attr] = (TARGET_DIR / path).as_posix()
+
+def get_step_name_from_wic_param(wic_param: str):
+    step, param = wic_param.split("___")
+    workflow_name, _ , step_index, step_name = step.split("__")
+    return step_name
 
 def rewrite_location_as_path(cwlJobInputs):
     """
@@ -682,6 +705,15 @@ def base_command_exists(cwl_name, compute_step):
             raise ValueError(f"Plugin not found : {cwl_name} in list of plugins : {pp.list_plugins()}. " +
                              f"Make sure the plugin's name in plugin.json is {cwl_name}")
 
+
+def sanitize_for_compute_argo(step_name : str):
+    """
+    argo seems to have specific requirements about how it forms its name.
+    NOTE : this should probably be fixed in compute, but for now it is easier
+    to tweak the compute workflow here.
+    """
+    return step_name.replace("_","-").replace(" ","").lower()
+
 def update_run_with_clt_definition(compute_step, workflow):
     """
     Update the run field of the workflow by replacing the path to a local clt
@@ -695,7 +727,7 @@ def update_run_with_clt_definition(compute_step, workflow):
             clt_file = utils.load_yaml(clt_path)
             # TODO CHECK an id is necessary for compute to process the step correctly.
             # we add it.
-            clt_file["id"] = cwl_name
+            clt_file["id"] = sanitize_for_compute_argo(cwl_name)
             compute_step["run"] = clt_file
     if not clt_path.exists():
         raise Exception(f"missing plugin cwl {step.cwl_name} in {clt_path}")
@@ -716,6 +748,10 @@ if __name__ == "__main__":
     # TODO CHECK everything for now must happen in the working directory
     # this seems to be a limitation for the wic integration.
     WORKING_DIR = Path("").absolute() # preprend to all path to make them absolute
+
+    # TODO HACK as it seems wic expects the workflow to be executed 
+    # on the machine wic is run on.
+    TARGET_DIR = Path("/data/outputs/")
 
     # We need a database of configuration for each BBBC dataset,
     # so we reuse Sakhet's and modify as we test them.
