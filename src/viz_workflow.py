@@ -23,6 +23,9 @@ class DatasetType(Enum):
     BBBC = "BBBC",
     NIST_MIST = "NIST_MIST"
 
+class NotAWicNameError(Exception):
+    """Raise if parameter's string does not abide to wic conventions."""
+
 def viz_workflow(dataset_name : str, 
                  dataset_type : DatasetType, 
                  cwl_path : Path, 
@@ -635,8 +638,74 @@ def convert_to_ict_workflow(
             rewrite_location_as_path(compute["cwlJobInputs"])
         update_run_with_clt_definition(compute["steps"][compute_step], workflow)
         update_all_paths_on_remote_target(compute["cwlJobInputs"])
+    rewrite_all_plugin_prefixes(compute)
 
     return compute
+
+def rewrite_all_plugin_prefixes(compute):
+    for section in [compute["cwlJobInputs"], compute["inputs"], compute["outputs"], compute["steps"]]:
+        update_wic_keys(section)
+    for step in compute["steps"]:
+        update_wic_values(compute["steps"][step]["in"])
+    for output in compute["outputs"]:
+        update_wic_values(compute["outputs"][output])
+
+def update_wic_values(step):
+    for k,v in step.items():
+        try:
+            parsed_v = get_info_from_wic_name(v)
+            if(parsed_v):
+                dependency_param = parsed_v[2].split("/")
+                if len(dependency_param) == 2:
+                    new_v = sanitize_for_compute_argo(dependency_param[0]) + "/" + dependency_param[1]
+                else:
+                    new_v = sanitize_for_compute_argo(parsed_v[2])
+                    if parsed_v[3] != None:
+                        new_v = new_v + "___" + parsed_v[3]
+                step[k] = new_v
+        except NotAWicNameError:
+            pass #ignore if not in wic format    
+
+def update_wic_keys(json):
+    keys = list(json)
+    for k in keys:
+        try:
+            parsed_k = get_info_from_wic_name(k)
+            if(parsed_k):
+                new_k = sanitize_for_compute_argo(parsed_k[2])
+                if parsed_k[3] != None:
+                    new_k = new_k + "___" + parsed_k[3]
+                json[new_k] = json.pop(k)
+        except NotAWicNameError:
+            pass #ignore if not in wic format
+
+def _rewrite_all_plugin_prefixes(compute):
+    all_things = walk_workflow(compute, None, None)
+    for thing in all_things:
+        context, entry, key = thing
+        try: 
+            result = get_info_from_wic_name(key)
+            context.update({key: "___" + key})
+        except NotAWicNameError:
+            pass
+
+
+def walk_workflow(context, entry, key):
+    if isinstance(entry, dict):
+        for k,v in entry.items():
+            yield context, entry, k
+            yield from walk_workflow(context, context[k], v)
+    # elif isinstance(context, list):
+    #     for index, item in enumerate(context):
+    #         yield from walk_workflow(context[index], item)
+
+def update_fully_qualified_name(json_input, input, index):
+    try:
+        workflow_name, step_index, step_name, param = get_info_from_wic_name(input)
+        print("rewrite_all_plugin_prefixes : ", input)
+        json_input[index] = "____" + input
+    except ValueError:
+        pass
 
 def update_all_paths_on_remote_target(cwlJobInputs):
     if(COMPUTE_COMPATIBILITY):
@@ -648,17 +717,28 @@ def update_all_paths_on_remote_target(cwlJobInputs):
         if isinstance(cwlJobInputs[input],dict) and cwlJobInputs[input]["class"] == "Directory":
             path : str = cwlJobInputs[input][directory_attr]
             if path.startswith(WORKING_DIR.as_posix()):
-                argo_compatible_step_name = sanitize_for_compute_argo(get_step_name_from_wic_param(input))
+                argo_compatible_step_name = sanitize_for_compute_argo(get_info_from_wic_name(input)[0])
                 target_path = (TARGET_DIR / argo_compatible_step_name).as_posix()
                 cwlJobInputs[input][directory_attr] = path.replace(WORKING_DIR.as_posix(), target_path)
             else:
-                # TODO we could replace by data from input key
-                cwlJobInputs[input][directory_attr] = (TARGET_DIR / path).as_posix()
+                try:
+                    _ , _, step_name, _ = get_info_from_wic_name(input)
+                    cwlJobInputs[input][directory_attr] = (TARGET_DIR / 
+                    sanitize_for_compute_argo(step_name)).as_posix()
+                except NotAWicNameError:
+                    pass # ignore if not in wic format
 
-def get_step_name_from_wic_param(wic_param: str):
-    step, param = wic_param.split("___")
-    workflow_name, _ , step_index, step_name = step.split("__")
-    return step_name
+def get_info_from_wic_name(wic_name: str):
+    param = None
+    step_or_param = wic_name.split("___")
+    step = step_or_param[0]
+    if(len(step_or_param) == 2):
+        param = step_or_param[1]
+    try: 
+        workflow_name, _ , step_index, step_name = step.split("__")
+        return workflow_name, step_index, step_name, param
+    except:
+        raise NotAWicNameError
 
 def rewrite_location_as_path(cwlJobInputs):
     """
@@ -793,9 +873,9 @@ if __name__ == "__main__":
                  compute_path = compute_path,
                  download=True,
                  convert=True,
-                 montage=True,
-                 assemble_and_build_pyramid=True,
-                 build_full_viz_workflow=True
+                 montage=False,
+                 assemble_and_build_pyramid=False,
+                 build_full_viz_workflow=False
                  )
     
     
