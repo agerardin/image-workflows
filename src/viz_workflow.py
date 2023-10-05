@@ -266,9 +266,13 @@ def create_download_bbbc_workflow(
 def configure_download_bbbc_workflow(steps, dataset_name, dataset_path, wic_path):
     bbbc_download = steps[0]
     bbbc_download.name = dataset_name
-    # TODO ignored by bbcDownload (it only uses the current working dir)
+    # TODO ignored by wic if the output is the input of another step
+    # (due the way wic create dependency between steps)
+    # WORKAROUND set it to the top level directory (will only work for one workflow)
     # output directory after our download
-    bbbc_download.outDir = dataset_path.absolute()
+    # collection_path = Path("BBBC") / dataset_name / "raw" / "Images"
+    # bbbc_download.outDir = dataset_path.absolute() / collection_path
+    bbbc_download.outDir = WORKING_DIR
     WFNAME_download= "workflow_download_" + dataset_name
     download_workflow= Workflow(steps, WFNAME_download, path=wic_path.absolute())
     return download_workflow
@@ -285,7 +289,7 @@ def create_convert_dataset_workflow(
     Create a workflow to standardize dataset (renaming to some conventions and transform images to scalable representations.)
     """
 
-    filerenaming = "https://raw.githubusercontent.com/PolusAI/polus-plugins/master/formats/file-renaming-plugin/plugin.json"
+    filerenaming = "https://raw.githubusercontent.com/agerardin/polus-plugins/update/filerenaming_subpath/formats/file-renaming-plugin/plugin.json"
     omeconverter = "https://raw.githubusercontent.com/PolusAI/polus-plugins/a2666916628ab8e7d04e87d866f9b7835a86ef55/formats/ome-converter-plugin/plugin.json"
 
     steps = create_workflow_steps([filerenaming, omeconverter], cwl_path=cwl_path)
@@ -338,17 +342,19 @@ def configure_convert_workflow_bbbc(
         raise Exception(f"could not find config in {BBBC_CONVERSION_CONFIG_FILE} for dataset : {dataset_name}")
 
     # find Images directory (Same for each BBBC_dataset)
-    image_path = dataset_path / "BBBC" / dataset_name / "raw" / "Images" 
+    collection_path = Path("BBBC") / dataset_name / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
+    image_path = dataset_path / collection_path
     if(not image_path.exists() and not image_path.is_dir()):
         raise Exception(f"Could not find Images directory for {dataset_name} in {image_path}")
 
     filerenaming, omeconverter = steps 
 
-    filerenaming.inpDir = Path(image_path)
+    filerenaming.inpDir = Path(dataset_path)
+    filerenaming.subPath = collection_path.as_posix()
     filerenaming.filePattern = config["rename_filePattern"]
     filerenaming.outFilePattern = config["rename_outFilePattern"]
     #TODO CHECK is this supposed to be user defined? Why? Then make it a param.
-    filerenaming.mapDirectory= 'raw'
+    # filerenaming.mapDirectory= 'raw'
     
     omeconverter.inpDir =  filerenaming.outDir
     #TODO REPORT bad filepattern just crash with error 1. Better reporting needed
@@ -404,7 +410,7 @@ def configure_convert_workflow_nist_mist(
     filerenaming.filePattern = nist_mist["rename_filePattern"]
     filerenaming.outFilePattern = nist_mist["rename_outFilePattern"]
     filerenaming.fileExtension = ".tif"
-    filerenaming.mapDirectory= 'raw'
+    # filerenaming.mapDirectory= 'raw'
 
     omeconverter.inpDir =  filerenaming.outDir
     #TODO REPORT bad filepattern just crash with error 1. Better reporting needed
@@ -531,7 +537,7 @@ def configure_pyramid_workflow(
     
     image_assembler, precompute_slide  = steps
 
-    image_assembler.timesliceNaming = False
+    # image_assembler.timesliceNaming = False
     image_assembler.imgPath = img_path
     image_assembler.stitchPath = stitch_path
 
@@ -637,7 +643,7 @@ def convert_to_ict_workflow(
             rewrite_io_paths_as_string(compute["steps"][compute_step])
             rewrite_location_as_path(compute["cwlJobInputs"])
         update_run_with_clt_definition(compute["steps"][compute_step], workflow)
-        update_all_paths_on_remote_target(compute["cwlJobInputs"])
+    update_all_paths_on_remote_target(compute["cwlJobInputs"])
     rewrite_all_plugin_prefixes(compute)
 
     return compute
