@@ -342,6 +342,7 @@ def configure_convert_workflow_bbbc(
         raise Exception(f"could not find config in {BBBC_CONVERSION_CONFIG_FILE} for dataset : {dataset_name}")
 
     # find Images directory (Same for each BBBC_dataset)
+    # TODO make this part of the step definition
     collection_path = Path("BBBC") / dataset_name / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
     image_path = dataset_path / collection_path
     if(not image_path.exists() and not image_path.is_dir()):
@@ -562,8 +563,9 @@ def create_workflow_steps(
     for plugin_url in plugin_urls:
         manifest = pp.submit_plugin(plugin_url, refresh=True)
         plugin_classname = name_cleaner(manifest.name)
+        plugin_version = manifest.version.version
         pp.refresh()
-        cwl = pp.get_plugin(plugin_classname).save_cwl(cwl_path / f"{plugin_classname}.cwl")
+        cwl = pp.get_plugin(plugin_classname, plugin_version).save_cwl(cwl_path / f"{plugin_classname}.cwl")
         step = Step(cwl)
         steps.append(step)
 
