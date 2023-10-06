@@ -130,7 +130,8 @@ def viz_workflow(dataset_name : str,
 
     # Define output dir for pyramid building.
     # TODO WORKAROUD once hierarchies are functional, change.
-    pyramids_dir =  WORKING_DIR / (dataset_name + "_pyramids")
+    # pyramids_dir =  WORKING_DIR / (dataset_name + "_pyramids")
+    pyramids_dir = Path("precomputeslide")
 
     if(assemble_and_build_pyramid):
 
@@ -154,7 +155,33 @@ def viz_workflow(dataset_name : str,
         if(build_full_viz_workflow):
             outDir = pyramids_dir
             viz_workflow = build_viz_workflow(partial_workflows, img_path, convert_out_dir_vectors, outDir)
-            run_workflow(viz_workflow, compute_path)
+            # run_workflow(viz_workflow, compute_path)
+            # TODO REMOVE TEMP HACK
+            if RUN_LOCAL:
+                logger.debug("attempt to run workflow...")
+                modify_bbbcdownload_output_cwl_workflow(viz_workflow)
+                viz_workflow.run(True)
+            else:
+                compute_workflow = create_ict_workflow(viz_workflow)
+                modify_bbbcdownload_output_compute_workflow(compute_workflow)
+                utils.save_json(compute_workflow, compute_path / f"{viz_workflow.name}.json")
+
+def modify_bbbcdownload_output_compute_workflow(compute_workflow):
+    bbbc_download = compute_workflow['steps']['bbbcdownload']
+    if(bbbc_download):
+        collection_path = Path("BBBC") / dataset_name / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
+        mount_path = Path(compute_workflow['cwlJobInputs']['bbbcdownload___outDir']['path'])
+        compute_workflow['cwlJobInputs']['bbbcdownload___outDir']['path'] = (mount_path / dataset_path.name/ collection_path).as_posix()
+
+
+def modify_bbbcdownload_output_cwl_workflow(viz_workflow):
+    first_step = viz_workflow.steps[0]
+    if(first_step.cwl_name == "BbbcDownload"):
+        # TODO HACK while we figure out why wic refuses to 
+        # compile convert_workflow with filrenaming `subPath`` parameter.
+        collection_path = Path("BBBC") / dataset_name / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
+        first_step.outDir = dataset_path / collection_path
+
 
 def build_viz_workflow(partial_workflows : list[Workflow], img_path, stitch_path, outDir):
     """
@@ -350,8 +377,9 @@ def configure_convert_workflow_bbbc(
 
     filerenaming, omeconverter = steps 
 
-    filerenaming.inpDir = Path(dataset_path)
-    filerenaming.subPath = collection_path.as_posix()
+    # filerenaming.inpDir = Path(dataset_path)
+    # filerenaming.subPath = collection_path.as_posix()
+    filerenaming.inpDir = Path(dataset_path) / collection_path
     filerenaming.filePattern = config["rename_filePattern"]
     filerenaming.outFilePattern = config["rename_outFilePattern"]
     #TODO CHECK is this supposed to be user defined? Why? Then make it a param.
@@ -474,7 +502,7 @@ def create_montage_workflow(
 
     return workflow
 
-def configure_montage_workflow_bbbc(
+def  configure_montage_workflow_bbbc(
                 dataset_name : str, 
                 dataset_path : Path,
                 wic_path: Path,
@@ -488,7 +516,8 @@ def configure_montage_workflow_bbbc(
     if dataset_name == "BBBC001":
         # TODO MAKE THAT PART OF BBBC CONFIG
         montage.inpDir = inpDir
-        montage.filePattern = "human_ht29_colon_cancer_1_images_x00_y03_p{p:dd}_c0.ome.tif"
+        # montage.filePattern = "human_ht29_colon_cancer_1_images_x00_y03_p{p:dd}_c0.ome.tif"
+        montage.filePattern = "x00_y03_p{p:dd}_c0.ome.tif"
         montage.layout = 'p'
         montage.outDir = outDir
     else :
