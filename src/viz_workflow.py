@@ -26,6 +26,67 @@ class DatasetType(Enum):
 class NotAWicNameError(Exception):
     """Raise if parameter's string does not abide to wic conventions."""
 
+class ConfigFileNotFound(FileNotFoundError):
+    """Exception raised when the config file is not found.
+    """
+    def __init__(self, message="Config file not found"):
+        self.message = message
+        super().__init__(self.message)
+
+
+def _configure_steps(steps : list[Step], config):
+    for step, step_config in zip(steps, config):
+            step_name = next(iter(step_config.keys()))
+            for key, value in step_config[step_name]['params'].items():
+                # retrieve every param that needs to be linked
+                if isinstance(value, dict):
+                    if value['type'] == 'Path' and value.get('link'):
+                        previous_step_name, previous_param_name = value['link'].split(".")
+                        # find step that referenced and link them
+                        for previous_step in steps:
+                            if previous_step.cwl_name == previous_step_name:
+                                step.__setattr__(key, previous_step.__getattribute__(previous_param_name))
+                    elif value['type'] == 'Path' and value.get('path'):
+                        step.__setattr__(key, Path(value['path']))
+                else:
+                    step.__setattr__(key, value)
+    return steps
+
+def _create_step(step_config):
+    step_name = next(iter(step_config.keys()))
+    plugin_manifest = step_config[step_name]['plugin']['manifest']
+
+    if plugin_manifest:
+        manifest = pp.submit_plugin(plugin_manifest, refresh=True)
+        # TODO CHECK how plugin name's are renamed to abide to python class name convention is hidden 
+        # in polus plugin, so we need to apply the same function here (we have cut and pasted the code)
+        plugin_classname = name_cleaner(manifest.name)
+        plugin_version = manifest.version.version
+        # TODO CHECK if that even solves the problem or not. 
+        # Plugins are not registered right away, but need the interpreter to be restarted.
+        # We may have to re-run the script the first time anyhow.
+        pp.refresh()
+        cwl = pp.get_plugin(plugin_classname, plugin_version).save_cwl(cwl_path / f"{plugin_classname}.cwl")
+        step = Step(cwl)
+        logger.debug(f"create {step.cwl_name}")
+    else:
+        logger.warn(f"no plugin manifest in config for step {step_name}")
+        # TODO use some generic plugin manifest
+
+    return step
+
+def _compile_workflow(steps, workflow_name, wic_path):
+    workflow = Workflow(steps, workflow_name, path=wic_path)
+    workflow.compile()
+    return workflow
+
+def _rewrite_bbbcdowload_outdir(compute_workflow, sub_path):
+    bbbc_download = compute_workflow['steps']['bbbcdownload']
+    if(bbbc_download):
+        collection_path = Path(sub_path)
+        mount_path = Path(compute_workflow['cwlJobInputs']['bbbcdownload___outDir']['path'])
+        compute_workflow['cwlJobInputs']['bbbcdownload___outDir']['path'] = (mount_path / collection_path).as_posix()
+
 def viz_workflow(dataset_name : str, 
                  dataset_type : DatasetType, 
                  cwl_path : Path, 
@@ -47,6 +108,37 @@ def viz_workflow(dataset_name : str,
     for the various artifacts generated.
     The boolean flags are currently used to generate only parts of the workflow.
     """
+    try: 
+        config : list = utils.load_yaml(WORKING_DIR / "config" / dataset_type.name / (dataset_name + ".yaml"))
+    except FileNotFoundError as e:
+        raise ConfigFileNotFound("Workflow config file not found :" + e.filename)
+
+    steps_config = config['steps']
+
+    logger.debug(f"workflow has {len(steps_config)} steps")
+    step_names = [next(iter(step.keys())) for step in steps_config]
+    logger.debug(f"steps are : {step_names}")
+
+    steps = []
+    for step_config in steps_config:
+        step = _create_step(step_config)
+        steps.append(step)
+
+    steps = _configure_steps(steps, steps_config)
+
+    logger.debug([step.inputs for step in steps])
+
+    workflow_name = "viz_workflow_" + dataset_name
+    # TODO CHECK HOW WE REWRITE PATHS BECAUSE THIS IS PLAINLY IGNORED
+    steps[-1].outDir = Path("POOOOOOWWW")
+
+    workflow = _compile_workflow(steps, workflow_name, wic_path)
+    compute_workflow = run_workflow(workflow, compute_path)
+    
+    # TODO REMOVE when subpath will be supported
+    _rewrite_bbbcdowload_outdir(compute_workflow, config['inputs']['filerenaming.subPath'])
+    utils.save_json(compute_workflow, compute_path / f"{workflow_name}.json")
+
 
     # ensure staging dirs are available
     os.makedirs(cwl_path, exist_ok=True)
@@ -166,12 +258,13 @@ def viz_workflow(dataset_name : str,
                 modify_bbbcdownload_output_compute_workflow(compute_workflow)
                 utils.save_json(compute_workflow, compute_path / f"{viz_workflow.name}.json")
 
+
 def modify_bbbcdownload_output_compute_workflow(compute_workflow):
     bbbc_download = compute_workflow['steps']['bbbcdownload']
     if(bbbc_download):
-        collection_path = Path("BBBC") / dataset_name / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
+        collection_path = Path(dataset_name) / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
         mount_path = Path(compute_workflow['cwlJobInputs']['bbbcdownload___outDir']['path'])
-        compute_workflow['cwlJobInputs']['bbbcdownload___outDir']['path'] = (mount_path / dataset_path.name/ collection_path).as_posix()
+        compute_workflow['cwlJobInputs']['bbbcdownload___outDir']['path'] = (mount_path / dataset_path.name / collection_path).as_posix()
 
 
 def modify_bbbcdownload_output_cwl_workflow(viz_workflow):
@@ -611,6 +704,7 @@ def run_workflow(workflow: Workflow, compute_path: Path = None):
     else:
         compute_workflow = create_ict_workflow(workflow)
         utils.save_json(compute_workflow, compute_path / f"{workflow.name}.json")
+        return compute_workflow
 
 # TODO wic_path and compute_path and in context, but should be explicitly passed to the function
 def create_ict_workflow(workflow: Workflow) :
@@ -903,7 +997,7 @@ if __name__ == "__main__":
     compute_path = WORKING_DIR / "data" /  Path("compute")
 
     # Set to True to run workflow with wic-provided cwl runner.
-    RUN_LOCAL=True
+    RUN_LOCAL=False
     # Set to True to modify wic-generated workflow to align with Compute restrictions regarding cwl.
     COMPUTE_COMPATIBILITY = True
 
@@ -922,7 +1016,7 @@ if __name__ == "__main__":
                  dataset_path = dataset_path,
                  wic_path = wic_path,
                  compute_path = compute_path,
-                 download=True,
+                 download=False,
                  convert=False,
                  montage=False,
                  assemble_and_build_pyramid=False,
