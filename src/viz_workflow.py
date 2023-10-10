@@ -378,7 +378,7 @@ def configure_convert_workflow_bbbc(
     filerenaming, omeconverter = steps 
 
     # filerenaming.inpDir = Path(dataset_path)
-    filerenaming.subPath = collection_path.as_posix()
+    # filerenaming.subPath = collection_path.as_posix()
     filerenaming.inpDir = Path(dataset_path) / collection_path
     filerenaming.filePattern = config["rename_filePattern"]
     filerenaming.outFilePattern = config["rename_outFilePattern"]
