@@ -299,7 +299,7 @@ def configure_download_bbbc_workflow(steps, dataset_name, dataset_path, wic_path
     # output directory after our download
     # collection_path = Path("BBBC") / dataset_name / "raw" / "Images"
     # bbbc_download.outDir = dataset_path.absolute() / collection_path
-    bbbc_download.outDir = WORKING_DIR
+    bbbc_download.outDir = WORKING_DIR / dataset_path
     WFNAME_download= "workflow_download_" + dataset_name
     download_workflow= Workflow(steps, WFNAME_download, path=wic_path.absolute())
     return download_workflow
@@ -378,7 +378,7 @@ def configure_convert_workflow_bbbc(
     filerenaming, omeconverter = steps 
 
     # filerenaming.inpDir = Path(dataset_path)
-    # filerenaming.subPath = collection_path.as_posix()
+    filerenaming.subPath = collection_path.as_posix()
     filerenaming.inpDir = Path(dataset_path) / collection_path
     filerenaming.filePattern = config["rename_filePattern"]
     filerenaming.outFilePattern = config["rename_outFilePattern"]
@@ -903,7 +903,7 @@ if __name__ == "__main__":
     compute_path = WORKING_DIR / "data" /  Path("compute")
 
     # Set to True to run workflow with wic-provided cwl runner.
-    RUN_LOCAL=False
+    RUN_LOCAL=True
     # Set to True to modify wic-generated workflow to align with Compute restrictions regarding cwl.
     COMPUTE_COMPATIBILITY = True
 
@@ -923,10 +923,10 @@ if __name__ == "__main__":
                  wic_path = wic_path,
                  compute_path = compute_path,
                  download=True,
-                 convert=True,
-                 montage=True,
-                 assemble_and_build_pyramid=True,
-                 build_full_viz_workflow=True
+                 convert=False,
+                 montage=False,
+                 assemble_and_build_pyramid=False,
+                 build_full_viz_workflow=False
                  )
     
     
