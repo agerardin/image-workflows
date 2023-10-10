@@ -33,7 +33,6 @@ class ConfigFileNotFound(FileNotFoundError):
         self.message = message
         super().__init__(self.message)
 
-
 def _configure_steps(steps : list[Step], config):
     for step, step_config in zip(steps, config):
             step_name = next(iter(step_config.keys()))
@@ -140,125 +139,6 @@ def viz_workflow(dataset_name : str,
     utils.save_json(compute_workflow, compute_path / f"{workflow_name}.json")
 
 
-    # ensure staging dirs are available
-    os.makedirs(cwl_path, exist_ok=True)
-    os.makedirs(dataset_path, exist_ok=True)
-    os.makedirs(wic_path, exist_ok=True)
-    os.makedirs(compute_path, exist_ok=True)
-
-    partial_workflows = []
-
-    
-    # Define our download output paths
-    img_path, stitch_path = None, None
-    if dataset_type == DatasetType.BBBC:
-        # by convention, this is how the BBBC_Download plugin organize data
-        img_path = dataset_path / "BBBC" / dataset_name / "Images"
-        # no stitching vector are provided in BBBC datasets.
-        stitch_path = None
-    elif dataset_type == DatasetType.NIST_MIST:
-        # Create our own convention for NIST MIST
-        # TODO we may want to harmonize even more closely with BBBC
-        img_path = dataset_path / "NIST_MIST/raw/images"
-        stitch_path = dataset_path / "NIST_MIST/raw/vectors"
-
-    if(download):
-        if dataset_type == DatasetType.BBBC:
-            download_bbbc_workflow = create_download_bbbc_workflow(dataset_name, cwl_path, dataset_path, wic_path)
-            run_workflow(download_bbbc_workflow, compute_path)
-            partial_workflows.append(download_bbbc_workflow)
-        elif dataset_type == DatasetType.NIST_MIST:
-            img_path, stitch_path = create_nist_mist_dataset(img_path, stitch_path)
-
-    # Define conversion step output dir
-    # That is the converted images and the converted stitching vector if available.
-    # TODO CHECK somehow we need to create a single directory at the top-level 
-    # Everything else will not work
-    convert_out_dir = WORKING_DIR / ( dataset_name + "_convert_out" )
-    os.makedirs(convert_out_dir, exist_ok=True)
-    #TODO WORKAROUND. CHANGE. As all hierarchies are ignored, we shove every bit of info in the name
-    convert_out_dir_vectors = convert_out_dir.with_name(convert_out_dir.name + "_vectors")
-    os.makedirs(convert_out_dir_vectors, exist_ok=True)
-
-    if(convert):
-        convert_workflow = create_convert_dataset_workflow(dataset_name, dataset_type, cwl_path, dataset_path, wic_path, convert_out_dir)
-        run_workflow(convert_workflow, compute_path)
-        partial_workflows.append(convert_workflow)
-    
-        # TODO REPLACE recycle does not seem to be designed for this 
-        # purpose, so for now we recycling the stitching vector manually.
-        # the original image names have their first suffix set to ome after conversion.
-        # we need to update the stitching vectors accordingly
-        # TODO could be extended to any dataset that ships with stitching vectors.
-        # TODO CHECK how should we check we have a stitching vector? 
-        # For now we check for the some file name convention, which is brittle
-        if dataset_type == DatasetType.NIST_MIST:
-            # TODO CHECK why prepending the original image directory to each images?
-            # It is probably because of wic top directory limitation, causing all images
-            # to be dump in one directory.
-            # We need a fix to match the original input structure.
-            preprend = "image-tiles_" 
-            recycle_stitching_vector(stitch_path, convert_out_dir_vectors, preprend)
-
-    # Montage outputs have been defined earlier before convert
-    if(montage):
-        if(dataset_type == DatasetType.NIST_MIST):
-            logger.debug("stitching already present, no montage to perform.")
-        elif dataset_type == DatasetType.BBBC:
-            # TODO review all input / output mecanics
-            inpDir = convert_out_dir.absolute()
-            # TODO CHECK inpDir, outDir and remove absolute if ok
-            outDir = convert_out_dir_vectors.absolute()
-            montage_workflow = create_montage_workflow(
-                dataset_name, 
-                dataset_type, 
-                cwl_path, 
-                dataset_path, 
-                wic_path, 
-                inpDir, 
-                outDir)
-            run_workflow(montage_workflow, compute_path)
-            partial_workflows.append(montage_workflow)
-
-    # Define output dir for pyramid building.
-    # TODO WORKAROUD once hierarchies are functional, change.
-    # pyramids_dir =  WORKING_DIR / (dataset_name + "_pyramids")
-    pyramids_dir = Path("precomputeslide")
-
-    if(assemble_and_build_pyramid):
-
-        if convert_out_dir is None or convert_out_dir_vectors is None:
-            raise Exception(f"Cannot run assemble workflow. Need Images and Stitching Vector, got : {img_path} and {stitch_path}")
-
-        pyramid_workflow = create_pyramid_workflow(
-            dataset_name, 
-            dataset_type, 
-            cwl_path, 
-            dataset_path, 
-            wic_path, 
-            img_path=convert_out_dir, 
-            stitch_path=convert_out_dir_vectors, 
-            out_dir=pyramids_dir
-        )
-
-        run_workflow(pyramid_workflow, compute_path)
-        partial_workflows.append(pyramid_workflow)
-
-        if(build_full_viz_workflow):
-            outDir = pyramids_dir
-            viz_workflow = build_viz_workflow(partial_workflows, img_path, convert_out_dir_vectors, outDir)
-            # run_workflow(viz_workflow, compute_path)
-            # TODO REMOVE TEMP HACK
-            if RUN_LOCAL:
-                logger.debug("attempt to run workflow...")
-                modify_bbbcdownload_output_cwl_workflow(viz_workflow)
-                viz_workflow.run(True)
-            else:
-                compute_workflow = create_ict_workflow(viz_workflow)
-                modify_bbbcdownload_output_compute_workflow(compute_workflow)
-                utils.save_json(compute_workflow, compute_path / f"{viz_workflow.name}.json")
-
-
 def modify_bbbcdownload_output_compute_workflow(compute_workflow):
     bbbc_download = compute_workflow['steps']['bbbcdownload']
     if(bbbc_download):
@@ -274,57 +154,6 @@ def modify_bbbcdownload_output_cwl_workflow(viz_workflow):
         # compile convert_workflow with filrenaming `subPath`` parameter.
         collection_path = Path("BBBC") / dataset_name / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
         first_step.outDir = dataset_path / collection_path
-
-
-def build_viz_workflow(partial_workflows : list[Workflow], img_path, stitch_path, outDir):
-    """
-    Build a full visualization workflow from the partial workflow.
-    This is not ideal, but a workaround the current implemetation problems.
-    Eventually this is going to be cleaner when we don't have to match steps manually
-    (that's one of wic promise). For that, we would probably need better descriptions of IO types.
-    """
-    steps = []
-    
-    BbbcDownload = None
-    FileRenaming, OmeConverter = None, None
-    Montage = None
-    ImageAssembler, PrecomputeSlide = None, None
-
-    for workflow in partial_workflows:
-        steps = steps + workflow.steps
-
-    for step in steps:
-        if(step.cwl_name == "BbbcDownload"):
-            BbbcDownload = step
-        elif(step.cwl_name == "FileRenaming"):
-            FileRenaming = step
-            if(BbbcDownload):
-                FileRenaming.inpDir = BbbcDownload.outDir
-            else:
-                FileRenaming.inpDir = img_path
-        elif(step.cwl_name == "OmeConverter"):
-            OmeConverter = step
-            OmeConverter.inpDir = FileRenaming.outDir
-        elif (step.cwl_name == "Montage"):
-            Montage = step
-            Montage.inpDir = OmeConverter.outDir
-        elif (step.cwl_name == "ImageAssembler"):
-            ImageAssembler = step
-            ImageAssembler.imgPath = OmeConverter.outDir
-            if(Montage):
-                ImageAssembler.stitchPath = Montage.outDir
-            else:
-                ImageAssembler.stitchPath = stitch_path
-        elif (step.cwl_name == "PrecomputeSlide"):
-            PrecomputeSlide = step
-            PrecomputeSlide.inpDir = ImageAssembler.outDir
-            PrecomputeSlide.outDir = outDir
-    
-    WFNAME_viz_workflow ="workflow_viz_" + dataset_name
-    viz_workflow = Workflow(steps, WFNAME_viz_workflow, path=wic_path.absolute())
-    viz_workflow.compile()
-    return viz_workflow
-
 
 
 def create_nist_mist_dataset(img_path, stitch_path):
@@ -365,130 +194,6 @@ def create_nist_mist_dataset(img_path, stitch_path):
         raise FileNotFoundError(f"could not successfully download nist_mist_dataset stitching vector")
 
     return img_path, stitch_path.parent
-
-def create_download_bbbc_workflow(
-        dataset_name : str,
-        cwl_path : Path, 
-        dataset_path : Path, 
-        wic_path: Path) -> Workflow :
-        """
-        Download any BBBC dataset.
-        """
-
-        bbbcdownload = "https://raw.githubusercontent.com/saketprem/polus-plugins/bbbc_download/utils/bbbc-download-plugin/plugin.json"
-
-        steps = create_workflow_steps([bbbcdownload], cwl_path=cwl_path)
-        
-        download_workflow = configure_download_bbbc_workflow(steps, dataset_name, dataset_path, wic_path)
-        download_workflow.compile()
-        return download_workflow
-
-def configure_download_bbbc_workflow(steps, dataset_name, dataset_path, wic_path):
-    bbbc_download = steps[0]
-    bbbc_download.name = dataset_name
-    # TODO ignored by wic if the output is the input of another step
-    # (due the way wic create dependency between steps)
-    # WORKAROUND set it to the top level directory (will only work for one workflow)
-    # output directory after our download
-    # collection_path = Path("BBBC") / dataset_name / "raw" / "Images"
-    # bbbc_download.outDir = dataset_path.absolute() / collection_path
-    bbbc_download.outDir = WORKING_DIR / dataset_path
-    WFNAME_download= "workflow_download_" + dataset_name
-    download_workflow= Workflow(steps, WFNAME_download, path=wic_path.absolute())
-    return download_workflow
-
-def create_convert_dataset_workflow(
-        dataset_name : str, 
-        dataset_type : DatasetType, 
-        cwl_path : Path, 
-        dataset_path : Path, 
-        wic_path: Path,
-        out_dir : Path
-    ) -> Workflow :
-    """
-    Create a workflow to standardize dataset (renaming to some conventions and transform images to scalable representations.)
-    """
-
-    filerenaming = "https://raw.githubusercontent.com/agerardin/polus-plugins/update/filerenaming_subpath/formats/file-renaming-plugin/plugin.json"
-    omeconverter = "https://raw.githubusercontent.com/PolusAI/polus-plugins/a2666916628ab8e7d04e87d866f9b7835a86ef55/formats/ome-converter-plugin/plugin.json"
-
-    steps = create_workflow_steps([filerenaming, omeconverter], cwl_path=cwl_path)
-
-    workflow = None
-
-    if dataset_type == DatasetType.BBBC:
-        workflow = configure_convert_workflow_bbbc(
-            dataset_name=dataset_name,
-            dataset_path=dataset_path,
-            wic_path=wic_path,
-            out_dir=out_dir,
-            steps=steps        
-        )
-    elif dataset_type == DatasetType.NIST_MIST:
-        workflow = configure_convert_workflow_nist_mist(
-            dataset_name=dataset_name,
-            dataset_path=dataset_path,
-            wic_path=wic_path,
-            out_dir = out_dir,
-            steps=steps        
-        )
-
-    if(workflow is None):
-        raise Exception("Could not create workflow")
-    workflow.compile()
-
-    return workflow
-
-def configure_convert_workflow_bbbc(
-                dataset_name : str, 
-                dataset_path : Path,
-                wic_path: Path,
-                out_dir : Path,
-                steps
-):
-    """
-    Generic configuration of the conversion workflow for the BBBC datasets.
-    """
-
-    # TODO FIX For now we reuse Sakhet's original json file and naive implementation.
-    # We should revisit to at least create a better datastructure for lookup.
-    config = None
-    bbbc_conversion_config =  utils.load_json(BBBC_CONVERSION_CONFIG_FILE)
-    for dataset_config in bbbc_conversion_config:
-        if dataset_config["name"] == dataset_name:
-            config = dataset_config
-            break
-    if config == None:
-        raise Exception(f"could not find config in {BBBC_CONVERSION_CONFIG_FILE} for dataset : {dataset_name}")
-
-    # find Images directory (Same for each BBBC_dataset)
-    # TODO make this part of the step definition
-    collection_path = Path("BBBC") / dataset_name / "raw" / "Images" / "human_ht29_colon_cancer_1_images"
-    image_path = dataset_path / collection_path
-    if(not image_path.exists() and not image_path.is_dir()):
-        raise Exception(f"Could not find Images directory for {dataset_name} in {image_path}")
-
-    filerenaming, omeconverter = steps 
-
-    # filerenaming.inpDir = Path(dataset_path)
-    # filerenaming.subPath = collection_path.as_posix()
-    filerenaming.inpDir = Path(dataset_path) / collection_path
-    filerenaming.filePattern = config["rename_filePattern"]
-    filerenaming.outFilePattern = config["rename_outFilePattern"]
-    #TODO CHECK is this supposed to be user defined? Why? Then make it a param.
-    # filerenaming.mapDirectory= 'raw'
-    
-    omeconverter.inpDir =  filerenaming.outDir
-    #TODO REPORT bad filepattern just crash with error 1. Better reporting needed
-    omeconverter.filePattern = config["ome_filePattern"]
-    #TODO CHECK For now we enforce converting to .ome.tiff but it could be .ome.zarr. Make it a param?
-    # it should not matter much since we generate zarr pyramids...
-    omeconverter.fileExtension = ".ome.tif"
-    #TODO ignored if not top-level. Need to be provided at the top level of the working directory
-    omeconverter.outDir= out_dir
-
-    WFNAME_convert="workflow_convert_" + dataset_name
-    return Workflow(steps, WFNAME_convert, path=wic_path)
 
 def configure_convert_workflow_nist_mist(
                 dataset_name : str, 
@@ -562,137 +267,6 @@ def recycle_stitching_vector(stitch_path : Path, out_dir : Path, prepend : str):
                         line = re.sub(pattern, prepend + result.group(), line)
                         output_file.write(line)
 
-def create_montage_workflow(
-        dataset_name : str, 
-        dataset_type : DatasetType, 
-        cwl_path : Path, 
-        dataset_path : Path, 
-        wic_path: Path,
-        inpDir: Path,
-        outDir: Path
-    ) -> Workflow :
-
-    montage  = "https://raw.githubusercontent.com/PolusAI/polus-plugins/master/transforms/images/montage-plugin/plugin.json"
-
-    steps = create_workflow_steps([montage], cwl_path=cwl_path)
-
-    workflow = None
-
-    if dataset_type == DatasetType.BBBC:
-        workflow = configure_montage_workflow_bbbc(
-            dataset_name=dataset_name,
-            dataset_path=dataset_path,
-            wic_path=wic_path,
-            inpDir= inpDir,
-            outDir= outDir,
-            steps=steps        
-    )
-    
-    if(workflow is None):
-        raise Exception("Could not create workflow")
-    
-    workflow.compile()
-
-    return workflow
-
-def  configure_montage_workflow_bbbc(
-                dataset_name : str, 
-                dataset_path : Path,
-                wic_path: Path,
-                inpDir : Path,
-                outDir : Path,
-                steps
-):
-
-    montage = steps[0]
-
-    if dataset_name == "BBBC001":
-        # TODO MAKE THAT PART OF BBBC CONFIG
-        montage.inpDir = inpDir
-        # montage.filePattern = "human_ht29_colon_cancer_1_images_x00_y03_p{p:dd}_c0.ome.tif"
-        montage.filePattern = "x00_y03_p{p:dd}_c0.ome.tif"
-        montage.layout = 'p'
-        montage.outDir = outDir
-    else :
-        raise Exception(f"Montage : dataset not yet supported : {dataset_name}. Add configuration.")
-
-    WFNAME_montage="workflow_montage_" + dataset_name
-    return Workflow(steps, WFNAME_montage, path=wic_path.absolute())
-
-def create_pyramid_workflow(
-        dataset_name : str, 
-        dataset_type : DatasetType, 
-        cwl_path : Path, 
-        dataset_path : Path, 
-        wic_path: Path,
-        img_path : Path,
-        stitch_path : Path,
-        out_dir : Path
-    ) -> Workflow :
-
-    image_assembler  = "https://raw.githubusercontent.com/agerardin/polus-plugins/new/image-assembler-plugin-1.4.0-dev0/transforms/images/image-assembler-plugin/plugin.json"
-    precompute_slide  = "https://raw.githubusercontent.com/agerardin/polus-plugins/update/precompute-slide-fp2/visualization/precompute-slide-plugin/plugin.json"
-
-    steps = create_workflow_steps([image_assembler, precompute_slide], cwl_path=cwl_path)
-
-    workflow = configure_pyramid_workflow(
-        dataset_name=dataset_name,
-        dataset_path=dataset_path,
-        wic_path=wic_path,
-        steps=steps,
-        img_path=img_path,
-        stitch_path=stitch_path,
-        out_dir=out_dir
-    )
-    workflow.compile()
-
-    return workflow
-
-def configure_pyramid_workflow(
-                dataset_name : str, 
-                dataset_path : Path,
-                wic_path: Path,
-                steps : list[Step],
-                img_path: Path,
-                stitch_path: Path,
-                out_dir: Path
-) -> Workflow :
-    
-    image_assembler, precompute_slide  = steps
-
-    # image_assembler.timesliceNaming = False
-    image_assembler.imgPath = img_path
-    image_assembler.stitchPath = stitch_path
-
-    precompute_slide.inpDir = image_assembler.outDir
-    precompute_slide.pyramidType = "Zarr"
-    precompute_slide.imageType = "image"
-    # TODO CHECK omitting filepattern should be fine
-    # precompute_slide.filePattern = "*.*"
-    precompute_slide.outDir = out_dir
-
-    WFNAME_assemble="workflow_assemble_and_build_pyramids_" + dataset_name
-    return Workflow(steps, WFNAME_assemble, path=wic_path.absolute())
-
-def create_workflow_steps( 
-        plugin_urls: list[Tuple[str,str]],
-        cwl_path : Path
-) -> list[Step] :
-    """
-    Given a list of plugins, return a list of workflow steps.
-    """
-    steps = []
-    for plugin_url in plugin_urls:
-        manifest = pp.submit_plugin(plugin_url, refresh=True)
-        plugin_classname = name_cleaner(manifest.name)
-        plugin_version = manifest.version.version
-        pp.refresh()
-        cwl = pp.get_plugin(plugin_classname, plugin_version).save_cwl(cwl_path / f"{plugin_classname}.cwl")
-        step = Step(cwl)
-        steps.append(step)
-
-    return steps
-
 def run_workflow(workflow: Workflow, compute_path: Path = None):
     """
     if global RUN_LOCAL flag is set, will try to run the workflow with wic-provided cwl runner.
@@ -724,8 +298,6 @@ def create_ict_workflow(workflow: Workflow) :
         )
 
         return compute_workflow
-
-    
 
 # TODO create a pydantic model for Compute? Reference it?
 def convert_to_ict_workflow(
@@ -968,7 +540,8 @@ def rewrite_io_paths_as_string(compute_step):
     """
     for input in compute_step["in"]:
         compute_step["in"][input] = compute_step["in"][input]["source"] 
-
+    
+    
 if __name__ == "__main__":
     # TODO CHECK everything for now must happen in the working directory
     # this seems to be a limitation for the wic integration.
@@ -1022,5 +595,3 @@ if __name__ == "__main__":
                  assemble_and_build_pyramid=False,
                  build_full_viz_workflow=False
                  )
-    
-    
