@@ -62,8 +62,8 @@ steps:
             imageType: "image"
             outDir:
                 type: Path 
-                # path: precomputeslide
-                #path: "/Users/antoinegerardin/Documents/projects/image-workflows/BBBC_BBBC001_out"
+                # TODO this could be generated from workflow outputs
+                path: "BBBC/BBBC001_out"
 
 # TODO NOT YET IMPLEMENTED
 # this would prevent having to edit this file
@@ -74,5 +74,3 @@ outputs:
     bbbcdownload.outDir:
         type: Path
         path: "BBBC/BBBC1/raw/Images/human_ht29_colon_cancer_1_images"
-inputs:
-    filerenaming.subPath: "BBBC/BBBC1/raw/Images/human_ht29_colon_cancer_1_images"
