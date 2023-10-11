@@ -71,5 +71,8 @@ outputs:
     precompute_slide.outDir:
         type: Path 
         path: precomputeslide
+    bbbcdownload.outDir:
+        type: Path
+        path: "BBBC/BBBC1/raw/Images/human_ht29_colon_cancer_1_images"
 inputs:
     filerenaming.subPath: "BBBC/BBBC1/raw/Images/human_ht29_colon_cancer_1_images"
