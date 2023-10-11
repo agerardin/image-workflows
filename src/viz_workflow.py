@@ -71,7 +71,7 @@ def viz_workflow(dataset_name : str,
      #   _rewrite_bbbcdowload_outdir_for_cwl(workflow, config)
         logger.debug("running workflow locally with cwl runner...")
         # TODO THE FULL WORKFLOW could not be run with cwl due to limitation
-        # about where staging directory are living it seems
+        # about how wic manages its staging area
         workflow.run(True)
     else:
         logger.debug(f"generating compute workflow spec...")
@@ -308,7 +308,10 @@ def update_paths_for_compute(cwlJobInputs):
         if isinstance(cwlJobInputs[input],dict) and cwlJobInputs[input]["class"] == "Directory":
             try:
                 _ , _, step_name, _ = parse_wic_name(input)
-                current_path = cwlJobInputs[input][directory_attr]
+                if(DEBUG_PLUGINS):
+                    current_path = ""
+                else: 
+                    current_path = cwlJobInputs[input][directory_attr]
                 cwlJobInputs[input][directory_attr] = (TARGET_DIR / 
                 sanitize_for_compute_argo(step_name) / current_path).as_posix()
             except NotAWicNameError:
@@ -557,6 +560,11 @@ if __name__ == "__main__":
     RUN_LOCAL=False
     # Set to True to modify wic-generated workflow to align with Compute restrictions regarding cwl.
     COMPUTE_COMPATIBILITY = True
+
+    # TODO REMOVE most plugins expect their output directories to exists
+    # when they are run. That is a problem we try to create arbitrary hierarchies on
+    # remote host. For now we are thus shoving all datasets together for each steps.
+    DEBUG_PLUGINS = True
 
     # dataset_name="BBBC004"
     dataset_name="BBBC001"
