@@ -226,7 +226,8 @@ def _convert_to_compute_workflow(
             add_step_run_base_command(compute["steps"][compute_step])
 
     if(DRIVER == "argo"):
-        update_paths_for_compute(compute["cwlJobInputs"])
+        # TODO now trying to fix argo driver instead
+        # update_paths_for_compute(compute["cwlJobInputs"])
         translate_wic_names_to_valid_argo_names(compute)
 
     return compute
