@@ -77,7 +77,7 @@ def viz_workflow(dataset_name : str,
         logger.debug(f"generating compute workflow spec...")
         compute_workflow = convert_to_compute_workflow(workflow, workflow_cwl)
         # TODO REMOVE when subpath will be supported
-        _rewrite_bbbcdowload_outdir_for_compute(compute_workflow, config)
+      #  _rewrite_bbbcdowload_outdir_for_compute(compute_workflow, config)
         utils.save_json(compute_workflow, COMPUTE_SPEC_PATH / f"{workflow_name}.json")
         logger.debug(f"compute workflow saved at : {COMPUTE_SPEC_PATH / (workflow_name +'.json')}")
 
@@ -214,16 +214,16 @@ def _convert_to_compute_workflow(
     add_missing_workflow_properties(compute, cwl_workflow, cwl_inputs)
     remove_unused_workflow_properties(compute)
 
-    for compute_step in compute["steps"]:
+    for compute_step_name in compute["steps"]:
         if(COMPUTE_COMPATIBILITY):
-            rewrite_io_paths_as_string(compute["steps"][compute_step])
+            rewrite_io_paths_as_string(compute["steps"][compute_step_name])
             rewrite_location_as_path(compute["cwlJobInputs"])
         
-        replace_run_with_clt_definition(compute["steps"][compute_step], workflow) 
-        add_step_run_id(compute["steps"][compute_step])
+        replace_run_with_clt_definition(compute["steps"][compute_step_name], workflow) 
+        add_step_run_id(compute["steps"][compute_step_name], compute_step_name)
 
         if(COMPUTE_COMPATIBILITY):
-            add_step_run_base_command(compute["steps"][compute_step])
+            add_step_run_base_command(compute["steps"][compute_step_name])
 
     if(DRIVER == "argo"):
         # TODO now trying to fix argo driver instead
@@ -256,9 +256,27 @@ def translate_wic_names_to_valid_argo_names(compute):
     for section in [compute["cwlJobInputs"], compute["inputs"], compute["outputs"], compute["steps"]]:
         update_wic_keys(section)
     for step in compute["steps"]:
+        compute["steps"][step]["run"]["id"] = update_wic_value(compute["steps"][step]["run"]["id"])
+    for step in compute["steps"]:
         update_wic_values(compute["steps"][step]["in"])
     for output in compute["outputs"]:
         update_wic_values(compute["outputs"][output])
+
+def update_wic_value(v):
+    try:
+        parsed_v = parse_wic_name(v)
+        if(parsed_v):
+            dependency_param = parsed_v[2].split("/")
+            if len(dependency_param) == 2:
+                new_v = sanitize_for_compute_argo(dependency_param[0]) + "/" + dependency_param[1]
+            else:
+                new_v = sanitize_for_compute_argo(parsed_v[2])
+                if parsed_v[3] != None:
+                    new_v = new_v + "___" + parsed_v[3]
+            return new_v
+    except NotAWicNameError:
+        pass #ignore if not in wic format 
+
 
 def update_wic_values(step):
     for k,v in step.items():
@@ -349,7 +367,7 @@ def add_step_run_base_command(compute_step):
     NOTE : this mechanism is brittle as we need to match the plugin's name with its generated clt cwl_name
     (TODO CHECK it is enforced) up to some conversion rules defined in the code.
     """
-    cwl_name = compute_step["run"]["name"]
+    cwl_name = compute_step["run"]["cwl_name"]
     try:
         compute_step["run"]["baseCommand"]
     except KeyError:
@@ -376,12 +394,12 @@ def replace_run_with_clt_definition(compute_step, workflow):
         if cwl_name == step.cwl_name:
             clt_path = step.cwl_path
             clt_file = utils.load_yaml(clt_path)
-            clt_file['name'] = cwl_name
+            clt_file['cwl_name'] = cwl_name
             compute_step["run"] = clt_file
     if not clt_path.exists():
         raise Exception(f"missing plugin cwl {step.cwl_name} in {clt_path}")
 
-def add_step_run_id(compute_step):
+def add_step_run_id(compute_step, compute_step_name):
     """
     An id is necessary for compute to process the step correctly.
     Generate id based on the plugin name, 
@@ -389,8 +407,8 @@ def add_step_run_id(compute_step):
     TODO CHECK if this is only an argo requirement or more generally
     a compute requirement.
     """
-    cwl_name = compute_step["run"]["name"]
-    compute_step["run"]["id"] = sanitize_for_compute_argo(cwl_name)
+    cwl_name = compute_step["run"]["cwl_name"]
+    compute_step["run"]["id"] = sanitize_for_compute_argo(compute_step_name)
 
 def rewrite_io_paths_as_string(compute_step):
     """
@@ -409,7 +427,8 @@ def sanitize_for_compute_argo(step_name : str):
     Step names are supposed to be valid kubernetes container names
     [TODO add link to spec]
     """
-    return step_name.replace("_","-").replace(" ","").lower()
+    # return step_name.replace("_","-").replace(" ","").lower()
+    return step_name
 
 # TODO REMOVE. This is from polus plugins. Polus plugins needs to fix this.
 # The problem being that names are rewritten in polus plugins but the manifest is not updated.
