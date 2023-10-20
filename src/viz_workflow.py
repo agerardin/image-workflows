@@ -33,18 +33,17 @@ class ConfigFileNotFound(FileNotFoundError):
         self.message = message
         super().__init__(self.message)
 
-def viz_workflow(dataset_name : str, 
-                 dataset_type : DatasetType, 
-                 ):
+def viz_workflow(configPath : Path):
     """
     Generate a compute workflow or run the cwl workflow locally,
     depending on the value of the global flag RUN_LOCAL
     """
-    try: 
-        config : list = utils.load_yaml(WORKING_DIR / "config" / dataset_type.name / (dataset_name + ".yaml"))
+    try:
+        config : list = utils.load_yaml(configPath)
     except FileNotFoundError as e:
         raise ConfigFileNotFound("Workflow config file not found :" + e.filename)
-
+    
+    workflow_name = config['name']
     steps_config = config['steps']
 
     logger.debug(f"workflow has {len(steps_config)} steps")
@@ -61,7 +60,6 @@ def viz_workflow(dataset_name : str,
     steps = _configure_steps(steps, steps_config)
 
     logger.debug(f"compiling workflow...")
-    workflow_name = "viz_workflow_" + dataset_name
     workflow = Workflow(steps, workflow_name, path=WIC_PATH)
     # TODO should be stored in workflow object rather than returned by compile()
     # along with the path to the input yaml file.
@@ -76,8 +74,6 @@ def viz_workflow(dataset_name : str,
     else:
         logger.debug(f"generating compute workflow spec...")
         compute_workflow = convert_to_compute_workflow(workflow, workflow_cwl)
-        # TODO REMOVE when subpath will be supported
-      #  _rewrite_bbbcdowload_outdir_for_compute(compute_workflow, config)
         utils.save_json(compute_workflow, COMPUTE_SPEC_PATH / f"{workflow_name}.json")
         logger.debug(f"compute workflow saved at : {COMPUTE_SPEC_PATH / (workflow_name +'.json')}")
 
@@ -572,9 +568,6 @@ if __name__ == "__main__":
     COMPUTE_SPEC_PATH = WORKING_DIR / Path("compute")
     Path(COMPUTE_SPEC_PATH).mkdir(parents=True, exist_ok=True)
 
-    # TODO REMOVE after updating NIST MIST
-    dataset_path = WORKING_DIR / Path("datasets")
-
     # Argo-driver
     DRIVER= 'argo'
     # Generate cwl workflow compatible with the legacy argo-driver
@@ -599,6 +592,10 @@ if __name__ == "__main__":
 
     logging.getLogger("WIC Python API").setLevel("DEBUG")
 
-    viz_workflow(dataset_name=dataset_name, dataset_type= dataset_type)
+    config_path = WORKING_DIR / "config" / "full" / dataset_type.name / (dataset_name + ".yaml")
+    # config_path = WORKING_DIR / "config/partial/BBBC/BBBC001_download_only.yaml"
+    # config_path = WORKING_DIR / "config/partial/BBBC/BBBC001_process_only.yaml"
+
+    viz_workflow(configPath=config_path)
     
 
