@@ -6,15 +6,11 @@ from os import environ
 import base64
 import urllib3
 
-# TODO For now disable HTTPS certificate check
+# NOTE For now disable HTTPS certificate check
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 POLUS_LOG = getattr(logging, environ.get("POLUS_LOG", "DEBUG"))
 logger = logging.getLogger("polus.plugins.token_service")
 logger.setLevel(POLUS_LOG)
-
-COMPUTE_CLIENT_ID = environ.get("COMPUTE_CLIENT_ID")
-COMPUTE_CLIENT_SECRET = environ.get("COMPUTE_CLIENT_SECRET")
 
 TOKEN_URL = 'https://a-ci.ncats.io/_api/auth/polus-ci/oidc/token'
 
@@ -34,6 +30,9 @@ def get_access_token():
     """
     Obtain a new OAuth 2.0 token from the authentication server.
     """
+    COMPUTE_CLIENT_ID = environ.get("COMPUTE_CLIENT_ID")
+    COMPUTE_CLIENT_SECRET = environ.get("COMPUTE_CLIENT_SECRET")
+
     if (COMPUTE_CLIENT_ID == None or COMPUTE_CLIENT_SECRET == None):
         raise Exception("you need to set env variables COMPUTE_CLIENT_ID and COMPUTE_CLIENT_SECRET")
 
@@ -46,6 +45,6 @@ def get_access_token():
     else:
         token_json = token_response.json()  
         parsed_access_token = decode_access_token(token_json["access_token"])
-        print(f"Successfuly obtained a new token: {token_json}")      
-        print(f"Decoded access token: {parsed_access_token}")   
+        logger.debug(f"Successfuly obtained a new token: {token_json}")      
+        logger.debug(f"Decoded access token: {parsed_access_token}")   
         return token_json["access_token"]
