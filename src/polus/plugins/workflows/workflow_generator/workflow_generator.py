@@ -7,8 +7,10 @@ from enum import Enum
 import polus.plugins.workflows.utils as utils
 import re
 import requests, zipfile, io
-from dotenv import load_dotenv
 import logging
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
 
 logger = logging.getLogger("polus.plugins.workflows.workflow_generator")
 
@@ -42,8 +44,6 @@ Path(COMPUTE_SPEC_PATH).mkdir(parents=True, exist_ok=True)
 # when they are run. That is a problem we try to create arbitrary hierarchies on
 # remote host. For now we are thus shoving all datasets together for each steps.
 DEBUG_PLUGINS = True
-
-load_dotenv(override=True)
 
 class DatasetType(Enum):
     BBBC = "BBBC",

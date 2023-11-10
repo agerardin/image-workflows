@@ -3,11 +3,11 @@ import requests
 import polus.plugins.workflows.utils as utils 
 import logging
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
 
 logger = logging.getLogger("polus.plugins.workflows.compute_client")
-
-load_dotenv(override=True)
 
 def submit_workflow(compute_workflow_file):
     token = get_access_token()

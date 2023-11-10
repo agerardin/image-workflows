@@ -6,14 +6,15 @@ from os import environ
 import base64
 from dotenv import load_dotenv
 import urllib3
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
 
 # NOTE For now disable HTTPS certificate check
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 POLUS_LOG = getattr(logging, environ.get("POLUS_LOG", "DEBUG"))
 logger = logging.getLogger("polus.plugins.token_service")
 logger.setLevel(POLUS_LOG)
-
-load_dotenv(override=True)
 
 def _b64_decode(data):
     data += '=' * (4 - len(data) % 4)

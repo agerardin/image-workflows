@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 import typer
 from typing_extensions import Annotated
 from polus.plugins.workflows.compute_client import submit_workflow
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(override=True)
+load_dotenv(find_dotenv())
 
 logging.basicConfig(
     format="%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s",
