@@ -20,3 +20,5 @@ compute_api_responses/
 .vscode
 .env
 notebooks/.ipynb_checkpoints
+__pycache__
+notebooks/=4.18.0

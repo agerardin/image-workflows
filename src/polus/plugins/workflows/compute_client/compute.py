@@ -2,6 +2,7 @@ from polus.plugins.workflows.compute_client.token_service import get_access_toke
 import requests
 import polus.plugins.workflows.utils as utils 
 import logging
+from pathlib import Path
 import os
 from dotenv import load_dotenv, find_dotenv
 
@@ -9,7 +10,7 @@ load_dotenv(find_dotenv())
 
 logger = logging.getLogger("polus.plugins.workflows.compute_client")
 
-def submit_workflow(compute_workflow_file):
+def submit_workflow(compute_workflow_file: Path):
     token = get_access_token()
 
     COMPUTE_URL = os.environ.get("COMPUTE_URL")

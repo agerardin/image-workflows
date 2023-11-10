@@ -59,7 +59,7 @@ class ConfigFileNotFound(FileNotFoundError):
         self.message = message
         super().__init__(self.message)
 
-def generate_workflow(configPath : Path):
+def generate_workflow(configPath : Path) -> Path :
     """
     Generate a compute workflow or run the cwl workflow locally,
     depending on the value of the global flag RUN_LOCAL
@@ -97,8 +97,11 @@ def generate_workflow(configPath : Path):
     else:
         logger.debug(f"generating compute workflow spec...")
         compute_workflow = convert_to_compute_workflow(workflow, workflow_cwl)
-        utils.save_json(compute_workflow, COMPUTE_SPEC_PATH / f"{workflow_name}.json")
-        logger.debug(f"compute workflow saved at : {COMPUTE_SPEC_PATH / (workflow_name +'.json')}")
+        compute_workflow_path = COMPUTE_SPEC_PATH / f"{workflow_name}.json"
+        utils.save_json(compute_workflow, compute_workflow_path)
+        logger.debug(f"compute workflow saved at : {compute_workflow_path}")
+
+    return compute_workflow_path
 
 def _configure_steps(steps : list[Step], config):
     """

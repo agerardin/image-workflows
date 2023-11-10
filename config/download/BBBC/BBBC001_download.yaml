@@ -1,4 +1,4 @@
-name: viz_workflow_BBBC001_demo
+name: viz_workflow_BBBC001
 steps:
     - bbbcdownload:
         plugin:
