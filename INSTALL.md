@@ -6,17 +6,17 @@
  conda activate viz-workflow
 ```
 
-# installing poetry
+# install poetry
 ```
 conda install -c conda-forge poetry
 ```
 
-# installing polus-plugins
-poetry add git+https://github.com/PolusAI/polus-plugins
+# install dependencies
 
-# installing Camilo's fork of wic (including the wic api)
-poetry add git+https://github.com/camilovelezr/workflow-inference-compiler.git@viz
+```
+poetry install
+```
 
-# installing wic dependencies
+# install wic dependencies
 conda env update --file wic_dependencies.yml
 

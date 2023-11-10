@@ -18,8 +18,6 @@ steps:
                 type: Path 
                 link: BbbcDownload.outDir
             filePattern: ".*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif"
-            # sth like should be possible, does this require an update of filerenaming?
-            # filePattern: "BBBC/BBBC001/raw/Images/human_ht29_colon_cancer_1_images/.*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif"
             outFilePattern: "x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif"
             # subPath: "BBBC/BBBC001/raw/Images/human_ht29_colon_cancer_1_images"
     - omeconverter:
@@ -53,6 +51,7 @@ steps:
             stitchPath:
                 type: Path 
                 link: Montage.outDir
+            timesliceNaming: False
     - precompute_slide:
         plugin:
             name: "PrecomputeSlide"

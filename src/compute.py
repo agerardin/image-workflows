@@ -2,7 +2,7 @@ from token_service import get_access_token
 from pathlib import Path
 import json
 import requests
-import utils 
+import polus.plugins.workflow_generator.utils as utils 
 import logging
 import os
 from dotenv import load_dotenv

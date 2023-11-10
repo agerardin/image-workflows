@@ -1,0 +1,11 @@
+name: viz_workflow_BBBC001_demo
+steps:
+    - bbbcdownload:
+        plugin:
+            name: "BbbcDownload"
+            manifest: "https://raw.githubusercontent.com/saketprem/polus-plugins/bbbc_download/utils/bbbc-download-plugin/plugin.json"
+        params:
+            name: "BBBC001"
+            outDir:
+                type: Path
+                path: InpDirFileRenaming

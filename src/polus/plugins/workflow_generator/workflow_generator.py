@@ -1,23 +1,49 @@
 
 import polus.plugins as pp
 from wic.api import Step, Workflow
-
-import logging
 from pathlib import Path
 import os
 from enum import Enum
-import utils
+import polus.plugins.workflow_generator.utils as utils
 import re
 import requests, zipfile, io
-from typing import Tuple
+from dotenv import load_dotenv
+import logging
 
-# Initialize the logger
-logging.basicConfig(
-    format="%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s",
-    datefmt="%d-%b-%y %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("polus.plugins.workflow_generator")
+
+# Argo-driver
+DRIVER= 'argo'
+# Generate cwl workflow compatible with the legacy argo-driver
+LEGACY_DRIVER = False
+
+# Set to True to run workflow with wic-provided cwl runner.
+RUN_LOCAL=False
+# Set to True to modify wic-generated workflow to align with Compute restrictions regarding cwl.
+COMPUTE_COMPATIBILITY = True
+
+# Current Working Directory
+WORKING_DIR = Path(os.getcwd()).absolute()  # preprend to all path to make them absolute
+
+# where to create CLT for the WIC API
+CWL_PATH = WORKING_DIR / Path("cwl")
+Path(CWL_PATH).mkdir(parents=True, exist_ok=True)
+
+# staging area for wic 
+WIC_PATH =  WORKING_DIR / Path("wic")
+Path(WIC_PATH).mkdir(parents=True, exist_ok=True)
+
+# where to create compute workflow
+COMPUTE_SPEC_PATH = WORKING_DIR / Path("compute")
+Path(COMPUTE_SPEC_PATH).mkdir(parents=True, exist_ok=True)
+
+# TODO REMOVE plugins should create their outputs directories if they do not exist.
+# most plugins expect their output directories to exists
+# when they are run. That is a problem we try to create arbitrary hierarchies on
+# remote host. For now we are thus shoving all datasets together for each steps.
+DEBUG_PLUGINS = True
+
+load_dotenv(override=True)
 
 class DatasetType(Enum):
     BBBC = "BBBC",
@@ -33,7 +59,7 @@ class ConfigFileNotFound(FileNotFoundError):
         self.message = message
         super().__init__(self.message)
 
-def viz_workflow(configPath : Path):
+def generate_workflow(configPath : Path):
     """
     Generate a compute workflow or run the cwl workflow locally,
     depending on the value of the global flag RUN_LOCAL
@@ -524,56 +550,5 @@ def recycle_stitching_vector(stitch_path : Path, out_dir : Path, prepend : str):
                     if result:
                         line = re.sub(pattern, prepend + result.group(), line)
                         output_file.write(line)
-
-
-if __name__ == "__main__":
-    # Top level directory
-    WORKING_DIR = Path("").absolute() # preprend to all path to make them absolute
-
-    # Used to preprend to wic generated paths.
-    TARGET_DIR = Path("/data/outputs/")
-
-    # where to create CLT for the WIC API
-    CWL_PATH = WORKING_DIR / Path("cwl")
-    Path(CWL_PATH).mkdir(parents=True, exist_ok=True)
-
-    # where to download datasets
-    # staging area for wic 
-    WIC_PATH =  WORKING_DIR / Path("wic")
-    Path(WIC_PATH).mkdir(parents=True, exist_ok=True)
-    
-    # where to create compute workflow
-    COMPUTE_SPEC_PATH = WORKING_DIR / Path("compute")
-    Path(COMPUTE_SPEC_PATH).mkdir(parents=True, exist_ok=True)
-
-    # Argo-driver
-    DRIVER= 'argo'
-    # Generate cwl workflow compatible with the legacy argo-driver
-    LEGACY_DRIVER = False
-
-    # Set to True to run workflow with wic-provided cwl runner.
-    RUN_LOCAL=False
-    # Set to True to modify wic-generated workflow to align with Compute restrictions regarding cwl.
-    COMPUTE_COMPATIBILITY = True
-
-    # TODO REMOVE plugins should create their outputs directories if they do not exist.
-    # most plugins expect their output directories to exists
-    # when they are run. That is a problem we try to create arbitrary hierarchies on
-    # remote host. For now we are thus shoving all datasets together for each steps.
-    DEBUG_PLUGINS = True
-
-    dataset_name="BBBC001"
-    dataset_type = DatasetType.BBBC
-    # dataset_name="NIST_MIST"
-    # dataset_type = DatasetType.NIST_MIST
-
-    logging.getLogger("WIC Python API").setLevel("DEBUG")
-
-    # config_path = WORKING_DIR / "config" / "full" / dataset_type.name / (dataset_name + ".yaml")
-    # config_path = WORKING_DIR / "config" / "download" / dataset_type.name / (dataset_name + "_download.yaml")
-    config_path = WORKING_DIR / "config" / "process" / dataset_type.name / (dataset_name + "_process.yaml")
-    # config_path = WORKING_DIR / "config" / "process" / dataset_type.name / (dataset_name + "_process_local.yaml")
-
-    viz_workflow(configPath=config_path)
     
 

@@ -10,10 +10,22 @@ Typical workflows we want to support :
 
 See `INSTALL.md`
 
-## Run the code
+## Generate Compute Workflow
 
-- To run workflows locally or generate compute workflow spec, configure script in main block, and run `python viz_workflow.py`
-- To submit all generated workflows to compute, run `python compute.py`. Note that you will need to set
+`python -m polus.plugins.workflow_generator WORKFLOW_SPEC`
+
+Example : 
+
+`python -m polus.plugins.workflow_generator config/process/BBBC/BBBC001_process.yaml`
+
+## Run Workflow on Compute
+
+Set up env variables:
+
+COMPUTE_URL=COMPUTE_URL
+
+
+run `python compute.py`. Note that you will also need to set
 COMPUTE_CLIENT_ID and COMPUTE_CLIENT_SECRET env variables to appropriate values.
 
 
