@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "workflow_generator"
+name = "polus-plugins-workflows"
 version = "0.1.0"
-description = ""
-authors = ["agerardin <antoine.gerardin@gmail.com>"]
+description = "Build and execute workflows of polus plugins on Compute."
+authors = ["Antoine Gerardin <antoine.gerardin@nih.gv>"]
 readme = "README.md"
 packages = [{include = "polus", from = "src"}]
 

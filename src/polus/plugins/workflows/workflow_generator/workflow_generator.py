@@ -4,13 +4,13 @@ from wic.api import Step, Workflow
 from pathlib import Path
 import os
 from enum import Enum
-import polus.plugins.workflow_generator.utils as utils
+import polus.plugins.workflows.utils as utils
 import re
 import requests, zipfile, io
 from dotenv import load_dotenv
 import logging
 
-logger = logging.getLogger("polus.plugins.workflow_generator")
+logger = logging.getLogger("polus.plugins.workflows.workflow_generator")
 
 # Argo-driver
 DRIVER= 'argo'

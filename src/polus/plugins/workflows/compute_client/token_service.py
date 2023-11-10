@@ -4,6 +4,7 @@ import json
 import logging
 from os import environ
 import base64
+from dotenv import load_dotenv
 import urllib3
 
 # NOTE For now disable HTTPS certificate check
@@ -12,7 +13,7 @@ POLUS_LOG = getattr(logging, environ.get("POLUS_LOG", "DEBUG"))
 logger = logging.getLogger("polus.plugins.token_service")
 logger.setLevel(POLUS_LOG)
 
-TOKEN_URL = 'https://a-ci.ncats.io/_api/auth/polus-ci/oidc/token'
+load_dotenv(override=True)
 
 def _b64_decode(data):
     data += '=' * (4 - len(data) % 4)
@@ -32,9 +33,14 @@ def get_access_token():
     """
     COMPUTE_CLIENT_ID = environ.get("COMPUTE_CLIENT_ID")
     COMPUTE_CLIENT_SECRET = environ.get("COMPUTE_CLIENT_SECRET")
+    TOKEN_URL = environ.get("TOKEN_URL")
 
-    if (COMPUTE_CLIENT_ID == None or COMPUTE_CLIENT_SECRET == None):
-        raise Exception("you need to set env variables COMPUTE_CLIENT_ID and COMPUTE_CLIENT_SECRET")
+    if TOKEN_URL == None:
+        raise Exception("you need to set env variable TOKEN_URL")
+    if COMPUTE_CLIENT_ID == None: 
+        raise Exception("you need to set env variable COMPUTE_CLIENT_ID")
+    if COMPUTE_CLIENT_SECRET == None:
+        raise Exception("you need to set env variable COMPUTE_CLIENT_SECRET")
 
     token_req_payload = {'grant_type': 'client_credentials'}
     auth = (COMPUTE_CLIENT_ID, COMPUTE_CLIENT_SECRET)

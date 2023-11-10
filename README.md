@@ -12,22 +12,21 @@ See `INSTALL.md`
 
 ## Generate Compute Workflow
 
-`python -m polus.plugins.workflow_generator WORKFLOW_SPEC`
+`python -m polus.plugins.workflows.workflow_generator WORKFLOW_SPEC`
 
 Example : 
 
-`python -m polus.plugins.workflow_generator config/process/BBBC/BBBC001_process.yaml`
+`python -m polus.plugins.workflows.workflow_generator config/process/BBBC/BBBC001_process.yaml`
 
 ## Run Workflow on Compute
 
 Set up env variables:
 
-COMPUTE_URL=COMPUTE_URL
+COMPUTE_URL # url of the compute api
+TOKEN_URL # authentication endpoint
+COMPUTE_CLIENT_ID, COMPUTE_CLIENT_SECRET
 
-
-run `python compute.py`. Note that you will also need to set
-COMPUTE_CLIENT_ID and COMPUTE_CLIENT_SECRET env variables to appropriate values.
-
+`python -m polus.plugins.workflows.compute_client compute/viz_workflow_BBBC001.json`
 
 ## Generating Workflows
 
