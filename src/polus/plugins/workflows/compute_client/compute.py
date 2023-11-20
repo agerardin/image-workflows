@@ -11,7 +11,15 @@ load_dotenv(find_dotenv())
 logger = logging.getLogger("polus.plugins.workflows.compute_client")
 
 def submit_workflow(compute_workflow_file: Path):
-    token = get_access_token()
+    token = os.environ.get("ACCESS_TOKEN")
+    if token == None :
+        logger.debug("""No access token provided. 
+                     Requesting new access token.""")
+        token = get_access_token()
+        # store the token for subsequent requests
+        os.environ["ACCESS_TOKEN"] = token 
+    else :
+        logger.debug("Use existing access token.")
 
     COMPUTE_URL = os.environ.get("COMPUTE_URL")
     if COMPUTE_URL == None :
@@ -24,4 +32,9 @@ def submit_workflow(compute_workflow_file: Path):
 
     url = COMPUTE_URL + '/compute/workflows'
     r = requests.post(url, headers=headers, json = workflow)
+    logger.debug(r.status_code)
     logger.debug(r.text)
+
+    if r.status_code == 401:
+        # if we fail to authenticate, get rid of stored token
+        del os.environ["ACCESS_TOKEN"]
