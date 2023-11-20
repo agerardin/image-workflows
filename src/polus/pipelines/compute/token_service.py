@@ -4,7 +4,6 @@ import json
 import logging
 from os import environ
 import base64
-from dotenv import load_dotenv
 import urllib3
 from dotenv import load_dotenv, find_dotenv
 
@@ -51,7 +50,4 @@ def get_access_token():
         raise Exception("Failed to obtain token from the OAuth 2.0 server", token_response)
     else:
         token_json = token_response.json()  
-        parsed_access_token = decode_access_token(token_json["access_token"])
-        logger.debug(f"Successfuly obtained a new token: {token_json}")      
-        logger.debug(f"Decoded access token: {parsed_access_token}")   
         return token_json["access_token"]

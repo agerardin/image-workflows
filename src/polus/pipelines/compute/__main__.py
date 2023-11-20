@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import typer
 from typing_extensions import Annotated
-from polus.plugins.workflows.compute_client import submit_workflow
+from polus.pipelines.compute import submit_workflow
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())

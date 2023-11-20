@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "polus-plugins-workflows"
+name = "polus-pipelines"
 version = "0.1.0"
 description = "Build and execute workflows of polus plugins on Compute."
 authors = ["Antoine Gerardin <antoine.gerardin@nih.gv>"]

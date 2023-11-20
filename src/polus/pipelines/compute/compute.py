@@ -1,6 +1,6 @@
-from polus.plugins.workflows.compute_client.token_service import get_access_token
+from polus.pipelines.compute.token_service import get_access_token
 import requests
-import polus.plugins.workflows.utils as utils 
+import polus.pipelines.utils as utils 
 import logging
 from pathlib import Path
 import os

@@ -4,7 +4,7 @@ from wic.api import Step, Workflow
 from pathlib import Path
 import os
 from enum import Enum
-import polus.plugins.workflows.utils as utils
+import polus.pipelines.utils as utils
 import re
 import requests, zipfile, io
 import logging
@@ -39,12 +39,6 @@ Path(WIC_PATH).mkdir(parents=True, exist_ok=True)
 COMPUTE_SPEC_PATH = WORKING_DIR / Path("compute")
 Path(COMPUTE_SPEC_PATH).mkdir(parents=True, exist_ok=True)
 
-# TODO REMOVE plugins should create their outputs directories if they do not exist.
-# most plugins expect their output directories to exists
-# when they are run. That is a problem we try to create arbitrary hierarchies on
-# remote host. For now we are thus shoving all datasets together for each steps.
-DEBUG_PLUGINS = True
-
 class DatasetType(Enum):
     BBBC = "BBBC",
     NIST_MIST = "NIST_MIST"
@@ -59,9 +53,9 @@ class ConfigFileNotFound(FileNotFoundError):
         self.message = message
         super().__init__(self.message)
 
-def generate_workflow(configPath : Path) -> Path :
+def build_workflow(configPath : Path) -> Path :
     """
-    Generate a compute workflow or run the cwl workflow locally,
+    Build a compute workflow or run the cwl workflow locally,
     depending on the value of the global flag RUN_LOCAL
     """
     try:
@@ -328,10 +322,7 @@ def update_paths_for_compute(cwlJobInputs):
         if isinstance(cwlJobInputs[input],dict) and cwlJobInputs[input]["class"] == "Directory":
             try:
                 _ , _, step_name, _ = parse_wic_name(input)
-                if(DEBUG_PLUGINS):
-                    current_path = ""
-                else: 
-                    current_path = cwlJobInputs[input][directory_attr]
+                current_path = cwlJobInputs[input][directory_attr]
                 cwlJobInputs[input][directory_attr] = (TARGET_DIR / 
                 sanitize_for_compute_argo(step_name) / current_path).as_posix()
             except NotAWicNameError:
