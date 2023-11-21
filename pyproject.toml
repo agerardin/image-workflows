@@ -8,8 +8,9 @@ packages = [{include = "polus", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-workflow-inference-compiler = {git = "https://github.com/camilovelezr/workflow-inference-compiler.git", rev = "viz"}
 polus-plugins = {git = "https://github.com/PolusAI/polus-plugins"}
+polus-render = "^0.0.4.0.1.5"
+workflow-inference-compiler = {git = "https://github.com/camilovelezr/workflow-inference-compiler.git", rev = "viz"}
 load-dotenv = "^0.1.0"
 typer = "^0.9.0"
 
