@@ -134,7 +134,7 @@ def _create_step(step_config):
     plugin_manifest = step_config[step_name]['plugin']['manifest']
 
     if plugin_manifest:
-        manifest = pp.submit_plugin(plugin_manifest, refresh=True)
+        manifest = pp.submit_plugin(plugin_manifest)
         # TODO CHECK how plugin name's are renamed to abide to python class name convention is hidden 
         # in polus plugin, so we need to apply the same function here (we have cut and pasted the code)
         plugin_classname = name_cleaner(manifest.name)
