@@ -6,7 +6,6 @@ __pycache__
 # staging directory
 /cwl
 /wic
-/compute
 notebooks/compute/
 notebooks/cwl/
 notebooks/wic/

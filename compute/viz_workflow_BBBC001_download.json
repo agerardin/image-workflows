@@ -1,0 +1,93 @@
+{
+    "$namespaces": {
+        "edam": "https://edamontology.org/"
+    },
+    "$schemas": [
+        "https://raw.githubusercontent.com/edamontology/edamontology/master/EDAM_dev.owl"
+    ],
+    "class": "Workflow",
+    "cwlJobInputs": {
+        "viz_workflow_BBBC001__step__1__BbbcDownload___name": "BBBC001",
+        "viz_workflow_BBBC001__step__1__BbbcDownload___outDir": {
+            "class": "Directory",
+            "location": "InpDirFileRenaming"
+        }
+    },
+    "cwlVersion": "v1.0",
+    "driver": "argo",
+    "inputs": {
+        "viz_workflow_BBBC001__step__1__BbbcDownload___name": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001__step__1__BbbcDownload___outDir": {
+            "type": "Directory"
+        }
+    },
+    "name": "viz_workflow_BBBC001",
+    "outputs": {
+        "viz_workflow_BBBC001__step__1__BbbcDownload___outDir": {
+            "outputSource": "viz_workflow_BBBC001__step__1__BbbcDownload/outDir",
+            "type": "Directory"
+        }
+    },
+    "steps": {
+        "viz_workflow_BBBC001__step__1__BbbcDownload": {
+            "in": {
+                "name": {
+                    "source": "viz_workflow_BBBC001__step__1__BbbcDownload___name"
+                },
+                "outDir": {
+                    "source": "viz_workflow_BBBC001__step__1__BbbcDownload___outDir"
+                }
+            },
+            "out": [
+                "outDir"
+            ],
+            "run": {
+                "baseCommand": [
+                    "python3",
+                    "-m",
+                    "polus.plugins.utils.bbbc_download"
+                ],
+                "class": "CommandLineTool",
+                "cwlVersion": "v1.2",
+                "inputs": {
+                    "name": {
+                        "inputBinding": {
+                            "prefix": "--name"
+                        },
+                        "type": "string"
+                    },
+                    "outDir": {
+                        "inputBinding": {
+                            "prefix": "--outDir"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "outputs": {
+                    "outDir": {
+                        "outputBinding": {
+                            "glob": "$(inputs.outDir.basename)"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "requirements": {
+                    "DockerRequirement": {
+                        "dockerPull": "polusai/bbbc-download-plugin:0.1.0-dev1"
+                    },
+                    "InitialWorkDirRequirement": {
+                        "listing": [
+                            {
+                                "entry": "$(inputs.outDir)",
+                                "writable": true
+                            }
+                        ]
+                    },
+                    "InlineJavascriptRequirement": {}
+                }
+            }
+        }
+    }
+}

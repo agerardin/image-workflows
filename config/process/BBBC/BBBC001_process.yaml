@@ -7,7 +7,7 @@ steps:
         params:
             inpDir:
                 type: Path 
-                path: "viz_workflow_BBBC001__step__1__BbbcDownload/InpDirFileRenaming/BBBC/BBBC001/raw/Images/human_ht29_colon_cancer_1_images/"
+                path: "656a026764eac817407aae95/viz_workflow_BBBC001__step__1__BbbcDownload/InpDirFileRenaming/BBBC/BBBC001/raw/Images/human_ht29_colon_cancer_1_images/"
             filePattern: ".*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif"
             outFilePattern: "x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif"
     - omeconverter:
