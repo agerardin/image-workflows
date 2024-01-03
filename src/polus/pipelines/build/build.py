@@ -12,7 +12,7 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
-logger = logging.getLogger("polus.plugins.workflows.workflow_generator")
+logger = logging.getLogger("polus.plugins.pipelines.build")
 
 # Argo-driver
 DRIVER= 'argo'
@@ -53,7 +53,8 @@ class ConfigFileNotFound(FileNotFoundError):
         self.message = message
         super().__init__(self.message)
 
-def build_workflow(configPath : Path) -> Path :
+
+def build_workflow(configPath : Path) -> Workflow :
     """
     Build a compute workflow or run the cwl workflow locally,
     depending on the value of the global flag RUN_LOCAL
@@ -81,21 +82,36 @@ def build_workflow(configPath : Path) -> Path :
 
     logger.debug(f"compiling workflow...")
     workflow = Workflow(steps, workflow_name, path=WIC_PATH)
+    
+    return workflow
+
+
+def generate_compute_workflow(workflow : Workflow) -> Path:
+    workflow_cwl = compile_workflow_to_cwl(workflow)
+    return _save_compute_workflow(workflow, workflow_cwl)
+
+
+def compile_workflow_to_cwl(workflow : Workflow) -> Path:
     # TODO should be stored in workflow object rather than returned by compile()
     # along with the path to the input yaml file.
     workflow_cwl = workflow.compile()
+    return workflow_cwl
 
+
+def run_workflow_local(workflow : Workflow):
     if RUN_LOCAL:
         logger.debug("running workflow locally with cwl runner...")
         workflow.run(True)
-    else:
-        logger.debug(f"generating compute workflow spec...")
-        compute_workflow = convert_to_compute_workflow(workflow, workflow_cwl)
-        compute_workflow_path = COMPUTE_SPEC_PATH / f"{workflow_name}.json"
-        utils.save_json(compute_workflow, compute_workflow_path)
-        logger.debug(f"compute workflow saved at : {compute_workflow_path}")
 
+
+def _save_compute_workflow(workflow : Workflow, workflow_cwl : Path) -> Path :
+    logger.debug(f"generating compute workflow spec...")
+    compute_workflow = convert_to_compute_workflow(workflow, workflow_cwl)
+    compute_workflow_path = COMPUTE_SPEC_PATH / f"{workflow.name}.json"
+    utils.save_json(compute_workflow, compute_workflow_path)
+    logger.debug(f"compute workflow saved at : {compute_workflow_path}")
     return compute_workflow_path
+
 
 def _configure_steps(steps : list[Step], config):
     """
@@ -126,6 +142,7 @@ def _configure_steps(steps : list[Step], config):
                     step.__setattr__(key, value)
     return steps
 
+
 def _create_step(step_config):
     """
     Create a step from its manifest.
@@ -152,6 +169,7 @@ def _create_step(step_config):
 
     return step
 
+
 def _rewrite_bbbcdowload_outdir_for_compute(compute_workflow, config):
     """
     TODO REMOVE HACK
@@ -170,6 +188,7 @@ def _rewrite_bbbcdowload_outdir_for_compute(compute_workflow, config):
         compute_workflow['cwlJobInputs']['bbbcdownload___outDir'][directory_attr] = (current_path / out_dir).as_posix()
     except KeyError:
         raise Exception(f"bbbcdownload step not found or does not contain bbbcdownload___outDir")
+
 
 def convert_to_compute_workflow(workflow: Workflow, workflow_cwl : Path) :
     """
