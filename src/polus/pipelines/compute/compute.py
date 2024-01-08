@@ -8,9 +8,9 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
-logger = logging.getLogger("polus.plugins.workflows.compute_client")
+logger = logging.getLogger("polus.pipelines.compute")
 
-def submit_workflow(compute_workflow_file: Path):
+def submit_pipeline(compute_pipeline_file: Path):
     token = os.environ.get("ACCESS_TOKEN")
     if token == None :
         logger.debug("""No access token provided. 
@@ -27,8 +27,8 @@ def submit_workflow(compute_workflow_file: Path):
         
     headers = {'Authorization': f"Bearer {token}"}
 
-    logger.debug(f"sending to compute : {compute_workflow_file}")
-    workflow = utils.load_json(compute_workflow_file)
+    logger.debug(f"sending to compute : {compute_pipeline_file}")
+    workflow = utils.load_json(compute_pipeline_file)
 
     url = COMPUTE_URL + '/compute/workflows'
     r = requests.post(url, headers=headers, json = workflow)

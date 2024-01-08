@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import typer
 from typing_extensions import Annotated
-from polus.pipelines.compute import submit_workflow
+from polus.pipelines.compute import submit_pipeline
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -20,19 +20,19 @@ logger.setLevel(POLUS_LOG)
 app = typer.Typer(help="Compute Client.")
 
 @app.command()
-def main(compute_workflow_file: Annotated[Path, typer.Argument()]):
+def main(compute_pipeline_file: Annotated[Path, typer.Argument()]):
 
-    compute_workflow_file = compute_workflow_file.resolve()
+    compute_pipeline_file = compute_pipeline_file.resolve()
 
-    if not compute_workflow_file.exists():
-        raise FileExistsError("no cwl workflow file has been provided."
-                                +f"{compute_workflow_file} not found.")
+    if not compute_pipeline_file.exists():
+        raise FileExistsError("no compute pipeline file has been provided."
+                                +f"{compute_pipeline_file} not found.")
     
     # TODO do we have a pydantic model to validate against?
-    if not (compute_workflow_file.is_file() and compute_workflow_file.suffix == ".json"):
-        raise Exception(f"{compute_workflow_file} is not a valid workflow file.")
+    if not (compute_pipeline_file.is_file() and compute_pipeline_file.suffix == ".json"):
+        raise Exception(f"{compute_pipeline_file} is not a valid pipeline file.")
     
-    submit_workflow(compute_workflow_file)
+    submit_pipeline(compute_pipeline_file)
 
 
 if __name__ == "__main__":

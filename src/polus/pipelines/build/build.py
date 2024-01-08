@@ -54,13 +54,18 @@ class ConfigFileNotFound(FileNotFoundError):
         super().__init__(self.message)
 
 
-def build_workflow(configPath : Path) -> Workflow :
+def build_pipeline(config_path : Path) -> Path:
+    workflow = build_workflow(config_path)
+    return generate_compute_workflow(workflow)
+
+
+def build_workflow(config_path : Path) -> Workflow :
     """
     Build a compute workflow or run the cwl workflow locally,
     depending on the value of the global flag RUN_LOCAL
     """
     try:
-        config : list = utils.load_yaml(configPath)
+        config : list = utils.load_yaml(config_path)
     except FileNotFoundError as e:
         raise ConfigFileNotFound("Workflow config file not found :" + e.filename)
     

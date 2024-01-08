@@ -12,7 +12,7 @@ See `INSTALL.md`
 
 ## Generate Compute Workflow
 
-`python -m polus.plugins.workflows.workflow_generator WORKFLOW_SPEC`
+`python -m polus.pipeline WORKFLOW_SPEC`
 
 Example : 
 
