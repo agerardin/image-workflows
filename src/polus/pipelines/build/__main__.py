@@ -1,4 +1,3 @@
-
 import logging
 from pathlib import Path
 import os
@@ -17,11 +16,12 @@ logger.setLevel(POLUS_LOG)
 
 app = typer.Typer(help="Pipeline Generator.")
 
+
 @app.command()
 def main(pipeline_spec: Annotated[Path, typer.Argument()]):
     logger.debug(f"generating pipeline from spec file: {pipeline_spec}")
-    return build_pipeline(configPath=pipeline_spec)
-    
+    return build_pipeline(pipeline_spec)
+
 
 if __name__ == "__main__":
     app()
