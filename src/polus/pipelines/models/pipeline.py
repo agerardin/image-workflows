@@ -1,3 +1,5 @@
+"""Models that represent pipeline specs."""
+
 from pydantic import BaseModel
 
 

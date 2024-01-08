@@ -1,3 +1,6 @@
+"""Command line Interface for the compute pipeline builder."""
+
+
 import logging
 from pathlib import Path
 import os
