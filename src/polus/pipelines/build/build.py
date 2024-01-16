@@ -7,29 +7,15 @@ import polus.plugins as pp
 from wic.api import Step, Workflow
 import polus.pipelines.utils as utils
 
-logger = logging.getLogger("polus.plugins.pipelines.build")
+from .constants import (
+    DRIVER,
+    COMPUTE_COMPATIBILITY,
+    CWL_PATH,
+    WIC_PATH,
+    COMPUTE_SPEC_PATH
+)
 
-# We only target the argo-driver
-DRIVER = "argo"
-
-# Set to True to modify wic-generated workflow to align with Compute restrictions regarding cwl.
-COMPUTE_COMPATIBILITY = True
-
-# Current Working Directory
-WORKING_DIR = Path(os.getcwd()).absolute()  # preprend to all path to make them absolute
-
-# where to create CLT for the WIC API
-CWL_PATH = WORKING_DIR / Path("cwl")
-Path(CWL_PATH).mkdir(parents=True, exist_ok=True)
-
-# staging area for wic
-WIC_PATH = WORKING_DIR / Path("wic")
-Path(WIC_PATH).mkdir(parents=True, exist_ok=True)
-
-# where to create compute workflow
-COMPUTE_SPEC_PATH = WORKING_DIR / Path("compute")
-Path(COMPUTE_SPEC_PATH).mkdir(parents=True, exist_ok=True)
-
+logger = logging.getLogger(__file__)
 
 class NotAWicNameError(Exception):
     """Raise if parameter's string does not abide to wic conventions."""
@@ -43,7 +29,7 @@ class ConfigFileNotFoundError(FileNotFoundError):
         super().__init__(self.message)
 
 
-def build_pipeline(config_path: Path) -> Path:
+def build_compute_pipeline(config_path: Path) -> Path:
     """Generate a compute pipeline.
     
     Args:
@@ -53,13 +39,18 @@ def build_pipeline(config_path: Path) -> Path:
         path to a compute spec.
     """
     workflow = build_workflow(config_path)
-    return generate_compute_workflow(workflow)
+    return save_compute_pipeline(workflow)
 
 
 def build_workflow(config_path: Path) -> Workflow:
     """
-    Build a compute workflow or run the cwl workflow locally,
-    depending on the value of the global flag RUN_LOCAL
+    Build a Workflow object from the pipeline spec.
+
+    Args:
+        path: path to the configuration file that describe the workflow configuration.
+    
+    Returns:
+        a Workflow object.
     """
     try:
         config = utils.load_yaml(config_path)
@@ -88,17 +79,27 @@ def build_workflow(config_path: Path) -> Workflow:
     return workflow
 
 
-def generate_compute_workflow(workflow: Workflow) -> Path:
-    workflow_cwl = compile_workflow_to_cwl(workflow)
+def save_compute_pipeline(workflow: Workflow) -> Path:
+    """Create a compute workflow specification file from a workflow object.
+    
+    Args:
+        workflow: the workflow object to generate a compute workflow specification from.
+    
+    Returns:
+        the file containing the compute workflow specification.
+    """
+    workflow_cwl = _compile_workflow_to_cwl(workflow)
     return _save_compute_workflow(workflow, workflow_cwl)
 
 
-def compile_workflow_to_cwl(workflow: Workflow) -> Path:
+def _compile_workflow_to_cwl(workflow: Workflow) -> Path:
+    """Compile a workflow to cwl."""
     workflow_cwl = workflow.compile()
     return workflow_cwl
 
 
 def _save_compute_workflow(workflow: Workflow, workflow_cwl: Path) -> Path:
+    """Save a compute workflow to disk."""
     logger.debug(f"generating compute workflow spec...")
     compute_workflow = convert_to_compute_workflow(workflow, workflow_cwl)
     compute_workflow_path = COMPUTE_SPEC_PATH / f"{workflow.name}.json"
@@ -217,6 +218,12 @@ def _convert_to_compute_workflow(
 
 
 def add_missing_workflow_properties(compute, cwl_workflow, cwl_inputs):
+    """
+    The current compute API requires extra properties that are not part of the standard
+    CWL format.
+
+    We update the compute workflow file accordingly.
+    """
     # missing properties
     workflow_name = cwl_workflow.stem
     compute.update({"name": workflow_name})
@@ -237,24 +244,24 @@ def add_step_run_base_command(compute_step, cwl_name):
     function.
     TODO Update once it is fixed in polus.plugins
     """
-    try:
-        compute_step["run"]["baseCommand"]
-    except KeyError:
-        plugin_found = False
-        for plugin in pp.list_plugins():
-            if plugin == cwl_name:
-                plugin_found = True
-                baseCommand = pp.get_plugin(plugin).baseCommand
-                if not baseCommand:
-                    raise ValueError(
-                        f"not found {plugin}.baseCommand. Check {plugin} plugin.json"
-                    )
-                compute_step["run"]["baseCommand"] = baseCommand
-        if not plugin_found:
-            raise ValueError(
-                f"Plugin not found : {cwl_name} in list of plugins : {pp.list_plugins()}. "
-                + f"Make sure the plugin's name in plugin.json is {cwl_name}"
-            )
+    if "run" in compute_step and "baseCommand" in compute_step["run"]: 
+        return
+    
+    plugin_found = False
+    for plugin in pp.list_plugins():
+        if plugin == cwl_name:
+            plugin_found = True
+            baseCommand = pp.get_plugin(plugin).baseCommand
+            if not baseCommand:
+                raise ValueError(
+                    f"not found {plugin}.baseCommand. Check {plugin} plugin.json"
+                )
+            compute_step["run"]["baseCommand"] = baseCommand
+    if not plugin_found:
+        raise ValueError(
+            f"Plugin not found : {cwl_name} in list of plugins : {pp.list_plugins()}. "
+            + f"Make sure the plugin's name in plugin.json is {cwl_name}"
+        )
 
 def replace_run_with_clt_definition(compute_step, workflow):
     """
@@ -269,7 +276,7 @@ def replace_run_with_clt_definition(compute_step, workflow):
             clt_file = utils.load_yaml(clt_path)
             compute_step["run"] = clt_file
     if not clt_path.exists():
-        raise Exception(f"missing plugin cwl {step.cwl_name} in {clt_path}")
+        raise FileNotFoundError(f"missing plugin cwl {step.cwl_name} in {clt_path}")
     return cwl_name
 
 # TODO REMOVE. This is from polus plugins. Polus plugins needs to fix this.

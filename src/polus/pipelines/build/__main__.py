@@ -13,8 +13,8 @@ logging.basicConfig(
     datefmt="%d-%b-%y %H:%M:%S",
 )
 
-POLUS_LOG = getattr(logging, os.environ.get("POLUS_LOG", "DEBUG"))
-logger = logging.getLogger("polus.pipelines.build")
+POLUS_LOG = getattr(logging, os.environ.get("POLUS_LOG", "INFO"))
+logger = logging.getLogger(__file__)
 logger.setLevel(POLUS_LOG)
 
 app = typer.Typer(help="Pipeline Generator.")

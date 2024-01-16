@@ -1,11 +1,9 @@
 """Auth client code."""
-
 import base64
 import json
 import logging
 from os import environ
 from typing import Any
-
 import requests
 import urllib3
 from dotenv import find_dotenv
@@ -13,19 +11,16 @@ from dotenv import load_dotenv
 
 from .constants import REQUESTS_TIMEOUT
 from .constants import SUCCESS_STATUS_CODE
+from .exceptions import MissingEnvironmentVariablesException
 
 load_dotenv(find_dotenv())
-
-COMPUTE_CLIENT_ID = environ.get("COMPUTE_CLIENT_ID")
-COMPUTE_CLIENT_SECRET = environ.get("COMPUTE_CLIENT_SECRET")
-TOKEN_URL = environ.get("TOKEN_URL")
 
 # NOTE For now disable HTTPS certificate check
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # logging config
 POLUS_LOG = getattr(logging, environ.get("POLUS_LOG", "DEBUG"))
-logger = logging.getLogger("polus.pipelines.token_service")
+logger = logging.getLogger(__file__)
 logger.setLevel(POLUS_LOG)
 
 
@@ -48,20 +43,26 @@ def decode_access_token(access_token: str) -> Any:  # noqa
 
 def get_access_token() -> str:
     """Obtain a new OAuth 2.0 token from the authentication server."""
-    if not TOKEN_URL:
-        msg = "you need to set env variable TOKEN_URL"
-        raise Exception(msg)
-    if not COMPUTE_CLIENT_ID:
-        msg = "you need to set env variable COMPUTE_CLIENT_ID"
-        raise Exception(msg)
-    if not COMPUTE_CLIENT_SECRET:
-        msg = "you need to set env variable COMPUTE_CLIENT_SECRET"
-        raise Exception(msg)
+    compute_client_id = environ.get("COMPUTE_CLIENT_ID")
+    compute_client_secret = environ.get("COMPUTE_CLIENT_SECRET")
+    token_url = environ.get("TOKEN_URL")
+
+    missing_vars = []
+    
+    if not token_url:
+        missing_vars.append("TOKEN_URL")
+    if not compute_client_id:
+        missing_vars.append("COMPUTE_CLIENT_ID")
+    if not compute_client_secret:
+        missing_vars.append("COMPUTE_CLIENT_SECRET")
+
+    if missing_vars:
+        raise MissingEnvironmentVariablesException(missing_vars)
 
     token_req_payload = {"grant_type": "client_credentials"}
-    auth = (COMPUTE_CLIENT_ID, COMPUTE_CLIENT_SECRET)
+    auth = (compute_client_id, compute_client_secret)
     token_response = requests.post(
-        TOKEN_URL,
+        token_url,
         data=token_req_payload,
         verify=False,  # noqa
         allow_redirects=False,
@@ -71,9 +72,8 @@ def get_access_token() -> str:
 
     if token_response.status_code != SUCCESS_STATUS_CODE:
         msg = "Failed to obtain token from the OAuth 2.0 server"
-        raise Exception(
-            msg,
-            token_response,
+        raise CannotObtainTokenException(
+            f"{msg}: {token_response}",
         )
 
     token_json = token_response.json()
@@ -82,6 +82,16 @@ def get_access_token() -> str:
 
     if not access_token:
         msg = f"unable to parse access token {token_json}"
-        raise Exception(msg)
+        raise UnparsableTokenException(msg)
 
     return access_token
+
+
+class UnparsableTokenException(Exception):
+    """Raise if unable to parse access token."""
+
+class UnauthorizedTokenException(Exception):
+    """Cannot authenticate with this access token."""
+
+class CannotObtainTokenException(Exception):
+    """Raise if unable to obtain token from the OAuth 2.0 server."""
