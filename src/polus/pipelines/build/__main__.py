@@ -7,15 +7,9 @@ import os
 import typer
 from typing_extensions import Annotated
 from .build import build_compute_pipeline
+from ..utils import make_logger
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s",
-    datefmt="%d-%b-%y %H:%M:%S",
-)
-
-POLUS_LOG = getattr(logging, os.environ.get("POLUS_LOG", "INFO"))
-logger = logging.getLogger(__file__)
-logger.setLevel(POLUS_LOG)
+logger = make_logger(__file__)
 
 app = typer.Typer(help="Pipeline Generator.")
 

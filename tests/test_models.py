@@ -1,4 +1,4 @@
-"""Test for the models package."""
+"""Test the models package."""
 
 
 from pathlib import Path
@@ -10,15 +10,9 @@ from pydantic import ValidationError
 
 
 @pytest.fixture()
-def path() -> Path:
-    """Path fixture."""
-    return Path("config/process/BBBC/BBBC001_process.yaml").resolve()
-
-
-@pytest.fixture()
-def pipeline_spec(path: Path) -> object:
+def pipeline_spec(spec_path: Path) -> object:
     """Spec file fixture."""
-    with Path.open(path) as file:
+    with Path.open(spec_path) as file:
         spec = yaml.safe_load(file)
         yield spec
 

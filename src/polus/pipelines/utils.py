@@ -9,13 +9,20 @@ import json
 import yaml
 
 
-def make_logger(file : str) -> Logger :
+def make_logger(name : str) -> Logger :
+    """logger factory.
+
+    Log level is controlled by a environment variable POLUS_LOG.
+    
+    Args:
+        name: the name of the logger.
+    """
     logging.basicConfig(
         format="%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s",
         datefmt="%d-%b-%y %H:%M:%S",
     )
     POLUS_LOG = getattr(logging, os.environ.get("POLUS_LOG", "INFO"))
-    logger = logging.getLogger(file)
+    logger = logging.getLogger(name)
     logger.setLevel(POLUS_LOG)
     return logger
 

@@ -1,3 +1,8 @@
+"""This file contains all constants used in the module.
+
+In particular, all staging directories are defined here.
+"""
+
 from pathlib import Path
 import os
 

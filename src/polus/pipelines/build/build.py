@@ -5,7 +5,8 @@ import logging
 
 import polus.plugins as pp
 from wic.api import Step, Workflow
-from ..utils import load_yaml,save_json
+from ..utils import (load_yaml, save_json, make_logger)
+from yaml import YAMLError
 
 from .constants import (
     DRIVER,
@@ -15,10 +16,7 @@ from .constants import (
     COMPUTE_SPEC_PATH
 )
 
-logger = logging.getLogger(__file__)
-
-class NotAWicNameError(Exception):
-    """Raise if parameter's string does not abide to wic conventions."""
+logger = make_logger(__file__)
 
 
 class ConfigFileNotFoundError(FileNotFoundError):
@@ -28,6 +26,8 @@ class ConfigFileNotFoundError(FileNotFoundError):
         self.message = message
         super().__init__(self.message)
 
+class ConfigError(Exception):
+    """Raise if there is a configuration error."""
 
 def build_compute_pipeline(config_path: Path) -> Path:
     """Generate a compute pipeline.
@@ -48,24 +48,31 @@ def build_workflow(config_path: Path) -> Workflow:
 
     Args:
         path: path to the configuration file that describe the workflow configuration.
-    
+
     Returns:
         a Workflow object.
+
+    Raises:
+        FileNotFoundError: if the pipeline spec file does not exist.
+        ConfigError: if there is a configuration error.
+        Otherwise, wic api errors are propagated (unable to validate pipeline spec).
     """
+    config_path = config_path.resolve(strict=True)
+
     try:
         config = load_yaml(config_path)
-    except FileNotFoundError as e:
-        raise ConfigFileNotFoundError("Workflow config file not found :" + e.filename)
+    except YAMLError as e:
+        raise ConfigError(f"Problem parsing the spec file : {config_path}")
 
     workflow_name = config["name"]
     steps_config = config["steps"]
-
     logger.debug(f"workflow has {len(steps_config)} steps")
     step_names = [next(iter(step.keys())) for step in steps_config]
     logger.debug(f"steps are : {step_names}")
 
     logger.debug(f"retrieving manifests and creating steps...")
     steps = []
+    
     for step_config in steps_config:
         step = _create_step(step_config)
         steps.append(step)

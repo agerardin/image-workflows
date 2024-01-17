@@ -28,7 +28,7 @@ load_dotenv(find_dotenv())
 logger = make_logger(__file__)
 
 
-def submit_pipeline(compute_pipeline_file: Path) -> None:
+def submit_pipeline(compute_pipeline_file: Path) -> requests.Response:
     """Submit pipeline to a compute instance.
 
     Args:
@@ -40,8 +40,16 @@ def submit_pipeline(compute_pipeline_file: Path) -> None:
         ComputeError: if the request to compute is otherwise unsuccessful.
         
     """
+    compute_pipeline_file = compute_pipeline_file.resolve(strict=True)
+    
+    file = compute_pipeline_file.as_posix()
+    if not file.endswith(".json"):
+        raise ConfigError(f"not a json file : {file}")
+    
+    # TODO validate compute pipeline spec with wic api
+    
     try:
-        # check we have have defined a compute instance.
+        # check we have configured a compute instance.
         compute_url = os.environ.get("COMPUTE_URL")
         if not compute_url:
             raise MissingEnvironmentVariablesException(["COMPUTE_URL"])
@@ -68,28 +76,28 @@ def submit_pipeline(compute_pipeline_file: Path) -> None:
     logger.debug(f"sending to compute : {compute_pipeline_file}")
     workflow = load_json(compute_pipeline_file)
     url = compute_url + "/compute/workflows"
-    r = requests.post(url, headers=headers, json=workflow, timeout=REQUESTS_TIMEOUT)
-    result = str(r.status_code) + r.text
-    if r.status_code == UNAUTHORIZED_STATUS_CODE:
+    response = requests.post(url, headers=headers, json=workflow, timeout=REQUESTS_TIMEOUT)
+    
+    if response.status_code == UNAUTHORIZED_STATUS_CODE:
         # if we fail to authenticate, get rid of stored token
         del os.environ["ACCESS_TOKEN"]
         e = UnauthorizedTokenException(f"Cannot use token to authenticate to {compute_url}." +
                                         f"{token}. Maybe it is expired? Please retry.")
         raise TokenError(e)
 
-    if not r.status_code in SUCCESS_STATUS_CODES:
+    if not response.status_code in SUCCESS_STATUS_CODES:
+        result = str(response.status_code) + response.text
         raise ComputeError(result)
     else:
-        logger.info(f"successfully sent workflow to compute.")
+        logger.debug(f"successfully sent workflow to compute.")
     
+    return response
 
 class ComputeError(Exception):
     """Compute Error"""
 
-
 class ConfigError(Exception):
     """Config Error"""
-
 
 class TokenError(Exception):
     """Token Error"""
