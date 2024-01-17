@@ -5,9 +5,9 @@ import logging
 
 import polus.plugins as pp
 from wic.api import Step, Workflow
+
 from ..utils import (load_yaml, save_json, make_logger)
 from yaml import YAMLError
-
 from .constants import (
     DRIVER,
     COMPUTE_COMPATIBILITY,
@@ -15,19 +15,11 @@ from .constants import (
     WIC_PATH,
     COMPUTE_SPEC_PATH
 )
+from ..exceptions import ConfigError
+
 
 logger = make_logger(__file__)
 
-
-class ConfigFileNotFoundError(FileNotFoundError):
-    """Exception raised when the config file is not found."""
-
-    def __init__(self, message="Config file not found"):
-        self.message = message
-        super().__init__(self.message)
-
-class ConfigError(Exception):
-    """Raise if there is a configuration error."""
 
 def build_compute_pipeline(config_path: Path) -> Path:
     """Generate a compute pipeline.
@@ -139,7 +131,7 @@ def _configure_steps(steps: list[Step], config):
                                 key, previous_step.__getattribute__(previous_param_name)
                             )
                     if not linked:
-                        raise Exception(f"could not link {value} for step {key}")
+                        raise ConfigError(f"could not link {value} for step {key}")
                 elif value["type"] == "Path" and value.get("path"):
                     step.__setattr__(key, Path(value["path"]))
             else:

@@ -19,11 +19,15 @@ from .constants import (
     UNAUTHORIZED_STATUS_CODE,
     SUCCESS_STATUS_CODES
 )
-from .exceptions import (
+from ..exceptions import (
     MissingEnvironmentVariablesException,
+    ConfigError,
+    TokenError,
+    ComputeError
 )
 
-load_dotenv(find_dotenv())
+# we do not override any existing env variables
+load_dotenv(find_dotenv(), override=False)
 
 logger = make_logger(__file__)
 
@@ -92,12 +96,3 @@ def submit_pipeline(compute_pipeline_file: Path) -> requests.Response:
         logger.debug(f"successfully sent workflow to compute.")
     
     return response
-
-class ComputeError(Exception):
-    """Compute Error"""
-
-class ConfigError(Exception):
-    """Config Error"""
-
-class TokenError(Exception):
-    """Token Error"""

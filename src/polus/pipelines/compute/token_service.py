@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from .constants import REQUESTS_TIMEOUT
 from .constants import SUCCESS_STATUS_CODES
-from .exceptions import MissingEnvironmentVariablesException
+from ..exceptions import MissingEnvironmentVariablesException
 from ..utils import make_logger
 
 load_dotenv(find_dotenv())

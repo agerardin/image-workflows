@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 from polus.pipelines.build import (
     build_compute_pipeline,
     build_workflow,

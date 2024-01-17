@@ -5,6 +5,7 @@ Set up all data used in tests.
 """
 import pytest
 from pathlib import Path
+from dotenv import (find_dotenv, load_dotenv)
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add options to pytest."""
@@ -27,3 +28,10 @@ def spec_path() -> Path:
 def compute_pipeline_file() -> Path:
     """Compute pipeline file fixture."""
     return (Path(__file__) / ".." / "testdata/viz_workflow_BBBC001.json").resolve(strict=True)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_setup(item): #noqa
+    # make we override any existing env variables
+    load_dotenv(find_dotenv(), override=True)
+    yield

@@ -17,6 +17,7 @@ def test_build_api(spec_path: Path) -> None:
     workflow = build_workflow(spec_path)
     save_compute_pipeline(workflow)
 
+
 @pytest.mark.skipif("not config.getoption('integration')")
 def test_compute_api(compute_pipeline_file: Path) -> None:
     """Test that all compute methods are available at the top package level."""

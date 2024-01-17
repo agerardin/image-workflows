@@ -1,8 +1,5 @@
 """Test the models package."""
-
-
 from pathlib import Path
-
 import pytest
 import yaml
 from polus.pipelines.models import Pipeline
