@@ -16,6 +16,7 @@ typer = "^0.9.0"
 pyyaml = "^6.0.1"
 solara = "^1.25.1"
 cwl-utils="0.31"
+toil="^5.12"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"

@@ -6,7 +6,7 @@ from pathlib import Path
 import os
 import typer
 from typing_extensions import Annotated
-from polus.pipelines.build import build_pipeline
+from .build import build_compute_pipeline
 
 logging.basicConfig(
     format="%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s",
@@ -23,7 +23,7 @@ app = typer.Typer(help="Pipeline Generator.")
 @app.command()
 def main(pipeline_spec: Annotated[Path, typer.Argument()]):
     logger.debug(f"generating pipeline from spec file: {pipeline_spec}")
-    return build_pipeline(pipeline_spec)
+    return build_compute_pipeline(pipeline_spec)
 
 
 if __name__ == "__main__":

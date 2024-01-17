@@ -12,7 +12,7 @@ from pydantic import ValidationError
 @pytest.fixture()
 def path() -> Path:
     """Path fixture."""
-    return Path("config/process/BBBC/BBBC001_process.yaml").absolute()
+    return Path("config/process/BBBC/BBBC001_process.yaml").resolve()
 
 
 @pytest.fixture()

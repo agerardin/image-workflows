@@ -10,18 +10,16 @@ from dotenv import find_dotenv
 from dotenv import load_dotenv
 
 from .constants import REQUESTS_TIMEOUT
-from .constants import SUCCESS_STATUS_CODE
+from .constants import SUCCESS_STATUS_CODES
 from .exceptions import MissingEnvironmentVariablesException
+from ..utils import make_logger
 
 load_dotenv(find_dotenv())
 
+logger = make_logger(__file__)
+
 # NOTE For now disable HTTPS certificate check
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# logging config
-POLUS_LOG = getattr(logging, environ.get("POLUS_LOG", "DEBUG"))
-logger = logging.getLogger(__file__)
-logger.setLevel(POLUS_LOG)
 
 
 def _b64_decode(data: str) -> str:
@@ -70,28 +68,31 @@ def get_access_token() -> str:
         timeout=REQUESTS_TIMEOUT,
     )
 
-    if token_response.status_code != SUCCESS_STATUS_CODE:
+    if not token_response.status_code in SUCCESS_STATUS_CODES:
         msg = "Failed to obtain token from the OAuth 2.0 server"
         raise CannotObtainTokenException(
             f"{msg}: {token_response}",
         )
 
     token_json = token_response.json()
-
     access_token = token_json["access_token"]
 
     if not access_token:
-        msg = f"unable to parse access token {token_json}"
-        raise UnparsableTokenException(msg)
+        raise UnparsableTokenException(token_json)
 
     return access_token
 
 
 class UnparsableTokenException(Exception):
     """Raise if unable to parse access token."""
+    def __init__(token_json: str):
+        msg = f"unable to parse access token {token_json}"
+        super().__init__(msg)
+
 
 class UnauthorizedTokenException(Exception):
-    """Cannot authenticate with this access token."""
+    """Raise if cannot authenticate with this access token."""
+
 
 class CannotObtainTokenException(Exception):
     """Raise if unable to obtain token from the OAuth 2.0 server."""

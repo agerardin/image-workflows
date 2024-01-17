@@ -3,11 +3,10 @@
 import logging
 import os
 from pathlib import Path
-
 import requests
-from dotenv import find_dotenv
-from dotenv import load_dotenv
-from ..utils import load_json
+from dotenv import (find_dotenv, load_dotenv)
+
+from ..utils import (load_json, make_logger)
 from .token_service import (
     get_access_token,
     UnauthorizedTokenException,
@@ -15,16 +14,18 @@ from .token_service import (
     UnparsableTokenException,
     UnauthorizedTokenException
 )
-
-from .constants import REQUESTS_TIMEOUT
-from .constants import UNAUTHORIZED_STATUS_CODE, SUCCESS_STATUS_CODE
+from .constants import (
+    REQUESTS_TIMEOUT,
+    UNAUTHORIZED_STATUS_CODE,
+    SUCCESS_STATUS_CODES
+)
 from .exceptions import (
     MissingEnvironmentVariablesException,
 )
 
 load_dotenv(find_dotenv())
 
-logger = logging.getLogger(__file__)
+logger = make_logger(__file__)
 
 
 def submit_pipeline(compute_pipeline_file: Path) -> None:
@@ -68,7 +69,7 @@ def submit_pipeline(compute_pipeline_file: Path) -> None:
     workflow = load_json(compute_pipeline_file)
     url = compute_url + "/compute/workflows"
     r = requests.post(url, headers=headers, json=workflow, timeout=REQUESTS_TIMEOUT)
-    result = r.status_code + r.text
+    result = str(r.status_code) + r.text
     if r.status_code == UNAUTHORIZED_STATUS_CODE:
         # if we fail to authenticate, get rid of stored token
         del os.environ["ACCESS_TOKEN"]
@@ -76,19 +77,19 @@ def submit_pipeline(compute_pipeline_file: Path) -> None:
                                         f"{token}. Maybe it is expired? Please retry.")
         raise TokenError(e)
 
-    if r.status_code != SUCCESS_STATUS_CODE:
+    if not r.status_code in SUCCESS_STATUS_CODES:
         raise ComputeError(result)
     else:
-        logger.info(f"successfully sent workflow to compute : {result}")
+        logger.info(f"successfully sent workflow to compute.")
     
 
-    class ComputeError(Exception):
-        """Compute Error"""
+class ComputeError(Exception):
+    """Compute Error"""
 
 
-    class ConfigError(Exception):
-        """Config Error"""
+class ConfigError(Exception):
+    """Config Error"""
 
 
-    class TokenError(Exception):
-        """Token Error"""
+class TokenError(Exception):
+    """Token Error"""

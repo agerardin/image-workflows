@@ -1,10 +1,23 @@
-"""Utility functions to serialize/marshall data."""
+"""Utility functions."""
 
-import json
-from pathlib import Path
 from typing import Any
-
+from pathlib import Path
+import os
+from logging import Logger
+import logging
+import json
 import yaml
+
+
+def make_logger(file : str) -> Logger :
+    logging.basicConfig(
+        format="%(asctime)s - %(name)-8s - %(levelname)-8s - %(message)s",
+        datefmt="%d-%b-%y %H:%M:%S",
+    )
+    POLUS_LOG = getattr(logging, os.environ.get("POLUS_LOG", "INFO"))
+    logger = logging.getLogger(file)
+    logger.setLevel(POLUS_LOG)
+    return logger
 
 
 def load_json(json_file: Path) -> Any:  # noqa
