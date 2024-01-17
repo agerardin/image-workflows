@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "polus-pipelines"
-version = "0.1.0"
+version = "0.1.1-dev0"
 description = "Build and execute pipelines of polus plugins on Compute."
 authors = ["Antoine Gerardin <antoine.gerardin@nih.gv>"]
 readme = "README.md"
