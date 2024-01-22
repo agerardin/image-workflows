@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "polus-pipelines"
-version = "0.1.1-dev0"
+version = "0.1.1-dev1"
 description = "Build and execute pipelines of polus plugins on Compute."
 authors = ["Antoine Gerardin <antoine.gerardin@nih.gv>"]
 readme = "README.md"
@@ -8,13 +8,15 @@ packages = [{include = "polus", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-polus-plugins = {git = "https://github.com/PolusAI/polus-plugins"}
 polus-render = "^0.0.4.0.1.5"
-workflow-inference-compiler = {git = "https://github.com/PolusAI/workflow-inference-compiler.git"}
 load-dotenv = "^0.1.0"
 typer = "^0.9.0"
 pyyaml = "^6.0.1"
 solara = "^1.25.1"
+
+polus-plugins = {git = "https://github.com/PolusAI/polus-plugins", develop=true}
+workflow-inference-compiler = {git = "https://github.com/PolusAI/workflow-inference-compiler.git", develop=true}
+# those are required wic dependencies
 cwl-utils="0.31"
 toil="^5.12"
 
