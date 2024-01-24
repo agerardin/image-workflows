@@ -25,11 +25,11 @@ COMPUTE_URL # url of the compute api
 TOKEN_URL # authentication endpoint
 COMPUTE_CLIENT_ID, COMPUTE_CLIENT_SECRET
 
-`python -m polus.pipelines.submit PATH/TO/COMPUTE_PIPELINE`
+`python -m polus.pipelines.compute PATH/TO/COMPUTE_PIPELINE`
 
 Example:
 
-`python -m polus.pipelines.submit compute/viz_workflow_BBBC001.json`
+`python -m polus.pipelines.compute compute/viz_workflow_BBBC001.json`
 
 ## Generating Workflows
 

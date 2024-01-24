@@ -25,3 +25,17 @@ error_*
 notebooks/.ipynb_checkpoints
 __pycache__
 notebooks/=4.18.0
+
+#temporary while experimenting with wic
+final.cwl
+final.json
+inpDirBasicFlatfieldEstimation/
+inpDirMontage/
+inpDirOmeConverter/
+inpDirPrecomputeSlide/
+src/cwl/
+src/wic/
+stitchPathImageAssembler/
+RUNS/
+WIC_STAGING/
+

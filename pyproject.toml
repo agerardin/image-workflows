@@ -8,14 +8,16 @@ packages = [{include = "polus", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-polus-render = "^0.0.4.0.1.5"
 load-dotenv = "^0.1.0"
 typer = "^0.9.0"
 pyyaml = "^6.0.1"
 solara = "^1.25.1"
 
-polus-plugins = {git = "https://github.com/PolusAI/polus-plugins", develop=true}
-workflow-inference-compiler = {git = "https://github.com/PolusAI/workflow-inference-compiler.git", develop=true}
+# polus-render = "^0.0.4.0.1.5"
+# polus-plugins = {git = "https://github.com/PolusAI/polus-plugins", develop=true}
+polus-plugins = { path = "../polus-plugins", develop = true }
+# workflow-inference-compiler = {git = "https://github.com/PolusAI/workflow-inference-compiler.git", develop=true}
+workflow-inference-compiler = {path= "../workflow-inference-compiler/", develop=true}
 # those are required wic dependencies
 cwl-utils="0.31"
 toil="^5.12"

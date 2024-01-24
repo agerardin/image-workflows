@@ -20,6 +20,7 @@ from ..exceptions import ConfigError
 
 logger = make_logger(__file__)
 
+pp.remove_all()
 
 def build_compute_pipeline(config_path: Path) -> Path:
     """Generate a compute pipeline.
@@ -250,6 +251,10 @@ def add_step_run_base_command(compute_step, cwl_name):
     for plugin in pp.list_plugins():
         if plugin == cwl_name:
             plugin_found = True
+            # TODO BUG! We can rely on not having the version at this point!
+            # otherwise only the latest plugin manifest(which can be different from the
+            # one we want to use and have configured)
+            # can be found
             baseCommand = pp.get_plugin(plugin).baseCommand
             if not baseCommand:
                 raise ValueError(

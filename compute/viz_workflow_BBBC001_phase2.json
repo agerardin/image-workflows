@@ -1,0 +1,401 @@
+{
+    "$namespaces": {
+        "edam": "https://edamontology.org/"
+    },
+    "$schemas": [
+        "https://raw.githubusercontent.com/edamontology/edamontology/master/EDAM_dev.owl"
+    ],
+    "class": "Workflow",
+    "cwlJobInputs": {
+        "viz_workflow_BBBC001_phase2__step__1__BbbcDownload___name": "BBBC001",
+        "viz_workflow_BBBC001_phase2__step__1__BbbcDownload___outDir": {
+            "class": "Directory",
+            "location": "inpDirFileRenaming"
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___filePattern": ".*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif",
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___mapDirectory": "raw",
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___outDir": {
+            "class": "Directory",
+            "location": "inpDirOmeConverter"
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___outFilePattern": "d{directory:dd}_x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif",
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter___fileExtension": ".ome.tif",
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter___filePattern": ".*.tif",
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter___outDir": {
+            "class": "Directory",
+            "location": "inpDirBasicFlatfieldEstimation"
+        },
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___filePattern": "d00_x00_y03_p{p:dd}_c0.ome.tif",
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___groupBy": "p",
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___outDir": {
+            "class": "Directory",
+            "location": "BBBC/BBBC001_out"
+        }
+    },
+    "cwlVersion": "v1.2",
+    "driver": "argo",
+    "inputs": {
+        "viz_workflow_BBBC001_phase2__step__1__BbbcDownload___name": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__1__BbbcDownload___outDir": {
+            "type": "Directory"
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___filePattern": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___mapDirectory": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___outDir": {
+            "type": "Directory"
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___outFilePattern": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter___fileExtension": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter___filePattern": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter___outDir": {
+            "type": "Directory"
+        },
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___filePattern": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___getDarkfield": {
+            "type": "boolean"
+        },
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___groupBy": {
+            "type": "string"
+        },
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___outDir": {
+            "type": "Directory"
+        }
+    },
+    "name": "viz_workflow_BBBC001_phase2",
+    "outputs": {
+        "viz_workflow_BBBC001_phase2__step__1__BbbcDownload___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase2__step__1__BbbcDownload/outDir",
+            "type": "Directory"
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase2__step__2__FileRenaming/outDir",
+            "type": "Directory"
+        },
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase2__step__3__OmeConverter/outDir",
+            "type": "Directory"
+        },
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation/outDir",
+            "type": "Directory"
+        }
+    },
+    "steps": {
+        "viz_workflow_BBBC001_phase2__step__1__BbbcDownload": {
+            "in": {
+                "name": {
+                    "source": "viz_workflow_BBBC001_phase2__step__1__BbbcDownload___name"
+                },
+                "outDir": {
+                    "source": "viz_workflow_BBBC001_phase2__step__1__BbbcDownload___outDir"
+                }
+            },
+            "out": [
+                "outDir"
+            ],
+            "run": {
+                "baseCommand": [
+                    "python3",
+                    "-m",
+                    "polus.plugins.utils.bbbc_download"
+                ],
+                "class": "CommandLineTool",
+                "cwlVersion": "v1.2",
+                "inputs": {
+                    "name": {
+                        "inputBinding": {
+                            "prefix": "--name"
+                        },
+                        "type": "string"
+                    },
+                    "outDir": {
+                        "inputBinding": {
+                            "prefix": "--outDir"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "outputs": {
+                    "outDir": {
+                        "outputBinding": {
+                            "glob": "$(inputs.outDir.basename)"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "requirements": {
+                    "DockerRequirement": {
+                        "dockerPull": "polusai/bbbc-download-plugin:0.1.0-dev1"
+                    },
+                    "InitialWorkDirRequirement": {
+                        "listing": [
+                            {
+                                "entry": "$(inputs.outDir)",
+                                "writable": true
+                            }
+                        ]
+                    },
+                    "InlineJavascriptRequirement": {}
+                }
+            }
+        },
+        "viz_workflow_BBBC001_phase2__step__2__FileRenaming": {
+            "in": {
+                "filePattern": {
+                    "source": "viz_workflow_BBBC001_phase2__step__2__FileRenaming___filePattern"
+                },
+                "inpDir": {
+                    "source": "viz_workflow_BBBC001_phase2__step__1__BbbcDownload/outDir"
+                },
+                "mapDirectory": {
+                    "source": "viz_workflow_BBBC001_phase2__step__2__FileRenaming___mapDirectory"
+                },
+                "outDir": {
+                    "source": "viz_workflow_BBBC001_phase2__step__2__FileRenaming___outDir"
+                },
+                "outFilePattern": {
+                    "source": "viz_workflow_BBBC001_phase2__step__2__FileRenaming___outFilePattern"
+                }
+            },
+            "out": [
+                "outDir"
+            ],
+            "run": {
+                "baseCommand": [
+                    "python3",
+                    "-m",
+                    "polus.plugins.formats.file_renaming"
+                ],
+                "class": "CommandLineTool",
+                "cwlVersion": "v1.2",
+                "inputs": {
+                    "filePattern": {
+                        "inputBinding": {
+                            "prefix": "--filePattern"
+                        },
+                        "type": "string"
+                    },
+                    "inpDir": {
+                        "inputBinding": {
+                            "prefix": "--inpDir"
+                        },
+                        "type": "Directory"
+                    },
+                    "mapDirectory": {
+                        "inputBinding": {
+                            "prefix": "--mapDirectory"
+                        },
+                        "type": "string?"
+                    },
+                    "outDir": {
+                        "inputBinding": {
+                            "prefix": "--outDir"
+                        },
+                        "type": "Directory"
+                    },
+                    "outFilePattern": {
+                        "inputBinding": {
+                            "prefix": "--outFilePattern"
+                        },
+                        "type": "string"
+                    }
+                },
+                "outputs": {
+                    "outDir": {
+                        "outputBinding": {
+                            "glob": "$(inputs.outDir.basename)"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "requirements": {
+                    "DockerRequirement": {
+                        "dockerPull": "polusai/file-renaming-plugin:0.2.4-dev"
+                    },
+                    "InitialWorkDirRequirement": {
+                        "listing": [
+                            {
+                                "entry": "$(inputs.outDir)",
+                                "writable": true
+                            }
+                        ]
+                    },
+                    "InlineJavascriptRequirement": {}
+                }
+            }
+        },
+        "viz_workflow_BBBC001_phase2__step__3__OmeConverter": {
+            "in": {
+                "fileExtension": {
+                    "source": "viz_workflow_BBBC001_phase2__step__3__OmeConverter___fileExtension"
+                },
+                "filePattern": {
+                    "source": "viz_workflow_BBBC001_phase2__step__3__OmeConverter___filePattern"
+                },
+                "inpDir": {
+                    "source": "viz_workflow_BBBC001_phase2__step__2__FileRenaming/outDir"
+                },
+                "outDir": {
+                    "source": "viz_workflow_BBBC001_phase2__step__3__OmeConverter___outDir"
+                }
+            },
+            "out": [
+                "outDir"
+            ],
+            "run": {
+                "baseCommand": [
+                    "python3",
+                    "-m",
+                    "polus.plugins.formats.ome_converter"
+                ],
+                "class": "CommandLineTool",
+                "cwlVersion": "v1.2",
+                "inputs": {
+                    "fileExtension": {
+                        "inputBinding": {
+                            "prefix": "--fileExtension"
+                        },
+                        "type": "string"
+                    },
+                    "filePattern": {
+                        "inputBinding": {
+                            "prefix": "--filePattern"
+                        },
+                        "type": "string"
+                    },
+                    "inpDir": {
+                        "inputBinding": {
+                            "prefix": "--inpDir"
+                        },
+                        "type": "Directory"
+                    },
+                    "outDir": {
+                        "inputBinding": {
+                            "prefix": "--outDir"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "outputs": {
+                    "outDir": {
+                        "outputBinding": {
+                            "glob": "$(inputs.outDir.basename)"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "requirements": {
+                    "DockerRequirement": {
+                        "dockerPull": "polusai/ome-converter-plugin:0.3.0"
+                    },
+                    "InitialWorkDirRequirement": {
+                        "listing": [
+                            {
+                                "entry": "$(inputs.outDir)",
+                                "writable": true
+                            }
+                        ]
+                    },
+                    "InlineJavascriptRequirement": {}
+                }
+            }
+        },
+        "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation": {
+            "in": {
+                "filePattern": {
+                    "source": "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___filePattern"
+                },
+                "getDarkfield": "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___getDarkfield",
+                "groupBy": {
+                    "source": "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___groupBy"
+                },
+                "inpDir": {
+                    "source": "viz_workflow_BBBC001_phase2__step__3__OmeConverter/outDir"
+                },
+                "outDir": {
+                    "source": "viz_workflow_BBBC001_phase2__step__4__BasicFlatfieldEstimation___outDir"
+                }
+            },
+            "out": [
+                "outDir"
+            ],
+            "run": {
+                "baseCommand": [
+                    "python3",
+                    "-m",
+                    "polus.plugins.regression.basic_flatfield_estimation"
+                ],
+                "class": "CommandLineTool",
+                "cwlVersion": "v1.2",
+                "inputs": {
+                    "filePattern": {
+                        "inputBinding": {
+                            "prefix": "--filePattern"
+                        },
+                        "type": "string"
+                    },
+                    "getDarkfield": {
+                        "inputBinding": {
+                            "prefix": "--getDarkfield"
+                        },
+                        "type": "boolean"
+                    },
+                    "groupBy": {
+                        "inputBinding": {
+                            "prefix": "--groupBy"
+                        },
+                        "type": "string?"
+                    },
+                    "inpDir": {
+                        "inputBinding": {
+                            "prefix": "--inpDir"
+                        },
+                        "type": "Directory"
+                    },
+                    "outDir": {
+                        "inputBinding": {
+                            "prefix": "--outDir"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "outputs": {
+                    "outDir": {
+                        "outputBinding": {
+                            "glob": "$(inputs.outDir.basename)"
+                        },
+                        "type": "Directory"
+                    }
+                },
+                "requirements": {
+                    "DockerRequirement": {
+                        "dockerPull": "polusai/basic-flatfield-estimation-plugin:2.1.0"
+                    },
+                    "InitialWorkDirRequirement": {
+                        "listing": [
+                            {
+                                "entry": "$(inputs.outDir)",
+                                "writable": true
+                            }
+                        ]
+                    },
+                    "InlineJavascriptRequirement": {}
+                }
+            }
+        }
+    }
+}

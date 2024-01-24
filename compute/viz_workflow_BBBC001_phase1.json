@@ -7,128 +7,128 @@
     ],
     "class": "Workflow",
     "cwlJobInputs": {
-        "viz_workflow_BBBC001__step__1__BbbcDownload___name": "BBBC001",
-        "viz_workflow_BBBC001__step__1__BbbcDownload___outDir": {
+        "viz_workflow_BBBC001_phase1__step__1__BbbcDownload___name": "BBBC001",
+        "viz_workflow_BBBC001_phase1__step__1__BbbcDownload___outDir": {
             "class": "Directory",
             "location": "inpDirFileRenaming"
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming___filePattern": ".*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif",
-        "viz_workflow_BBBC001__step__2__FileRenaming___mapDirectory": "raw",
-        "viz_workflow_BBBC001__step__2__FileRenaming___outDir": {
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___filePattern": ".*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif",
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___mapDirectory": "raw",
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___outDir": {
             "class": "Directory",
             "location": "inpDirOmeConverter"
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming___outFilePattern": "d{directory:dd}_x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif",
-        "viz_workflow_BBBC001__step__3__OmeConverter___fileExtension": ".ome.tif",
-        "viz_workflow_BBBC001__step__3__OmeConverter___filePattern": ".*.tif",
-        "viz_workflow_BBBC001__step__3__OmeConverter___outDir": {
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___outFilePattern": "d{directory:dd}_x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif",
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter___fileExtension": ".ome.tif",
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter___filePattern": ".*.tif",
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter___outDir": {
             "class": "Directory",
             "location": "inpDirMontage"
         },
-        "viz_workflow_BBBC001__step__4__Montage___filePattern": "d00_x00_y03_p{p:dd}_c0.ome.tif",
-        "viz_workflow_BBBC001__step__4__Montage___layout": "p",
-        "viz_workflow_BBBC001__step__4__Montage___outDir": {
+        "viz_workflow_BBBC001_phase1__step__4__Montage___filePattern": "d00_x00_y03_p{p:dd}_c0.ome.tif",
+        "viz_workflow_BBBC001_phase1__step__4__Montage___layout": "p",
+        "viz_workflow_BBBC001_phase1__step__4__Montage___outDir": {
             "class": "Directory",
             "location": "stitchPathImageAssembler"
         },
-        "viz_workflow_BBBC001__step__5__ImageAssembler___outDir": {
+        "viz_workflow_BBBC001_phase1__step__5__ImageAssembler___outDir": {
             "class": "Directory",
             "location": "inpDirPrecomputeSlide"
         },
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide___imageType": "image",
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide___outDir": {
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___imageType": "image",
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___outDir": {
             "class": "Directory",
             "location": "BBBC/BBBC001_out"
         },
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide___pyramidType": "Zarr"
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___pyramidType": "Zarr"
     },
     "cwlVersion": "v1.2",
     "driver": "argo",
     "inputs": {
-        "viz_workflow_BBBC001__step__1__BbbcDownload___name": {
+        "viz_workflow_BBBC001_phase1__step__1__BbbcDownload___name": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__1__BbbcDownload___outDir": {
+        "viz_workflow_BBBC001_phase1__step__1__BbbcDownload___outDir": {
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming___filePattern": {
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___filePattern": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming___mapDirectory": {
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___mapDirectory": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming___outDir": {
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___outDir": {
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming___outFilePattern": {
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___outFilePattern": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__3__OmeConverter___fileExtension": {
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter___fileExtension": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__3__OmeConverter___filePattern": {
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter___filePattern": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__3__OmeConverter___outDir": {
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter___outDir": {
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__4__Montage___filePattern": {
+        "viz_workflow_BBBC001_phase1__step__4__Montage___filePattern": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__4__Montage___layout": {
+        "viz_workflow_BBBC001_phase1__step__4__Montage___layout": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__4__Montage___outDir": {
+        "viz_workflow_BBBC001_phase1__step__4__Montage___outDir": {
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__5__ImageAssembler___outDir": {
+        "viz_workflow_BBBC001_phase1__step__5__ImageAssembler___outDir": {
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide___imageType": {
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___imageType": {
             "type": "string"
         },
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide___outDir": {
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___outDir": {
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide___pyramidType": {
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___pyramidType": {
             "type": "string"
         }
     },
-    "name": "viz_workflow_BBBC001",
+    "name": "viz_workflow_BBBC001_phase1",
     "outputs": {
-        "viz_workflow_BBBC001__step__1__BbbcDownload___outDir": {
-            "outputSource": "viz_workflow_BBBC001__step__1__BbbcDownload/outDir",
+        "viz_workflow_BBBC001_phase1__step__1__BbbcDownload___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase1__step__1__BbbcDownload/outDir",
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming___outDir": {
-            "outputSource": "viz_workflow_BBBC001__step__2__FileRenaming/outDir",
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase1__step__2__FileRenaming/outDir",
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__3__OmeConverter___outDir": {
-            "outputSource": "viz_workflow_BBBC001__step__3__OmeConverter/outDir",
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase1__step__3__OmeConverter/outDir",
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__4__Montage___outDir": {
-            "outputSource": "viz_workflow_BBBC001__step__4__Montage/outDir",
+        "viz_workflow_BBBC001_phase1__step__4__Montage___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase1__step__4__Montage/outDir",
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__5__ImageAssembler___outDir": {
-            "outputSource": "viz_workflow_BBBC001__step__5__ImageAssembler/outDir",
+        "viz_workflow_BBBC001_phase1__step__5__ImageAssembler___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase1__step__5__ImageAssembler/outDir",
             "type": "Directory"
         },
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide___outDir": {
-            "outputSource": "viz_workflow_BBBC001__step__6__PrecomputeSlide/outDir",
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___outDir": {
+            "outputSource": "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide/outDir",
             "type": "Directory"
         }
     },
     "steps": {
-        "viz_workflow_BBBC001__step__1__BbbcDownload": {
+        "viz_workflow_BBBC001_phase1__step__1__BbbcDownload": {
             "in": {
                 "name": {
-                    "source": "viz_workflow_BBBC001__step__1__BbbcDownload___name"
+                    "source": "viz_workflow_BBBC001_phase1__step__1__BbbcDownload___name"
                 },
                 "outDir": {
-                    "source": "viz_workflow_BBBC001__step__1__BbbcDownload___outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__1__BbbcDownload___outDir"
                 }
             },
             "out": [
@@ -180,22 +180,22 @@
                 }
             }
         },
-        "viz_workflow_BBBC001__step__2__FileRenaming": {
+        "viz_workflow_BBBC001_phase1__step__2__FileRenaming": {
             "in": {
                 "filePattern": {
-                    "source": "viz_workflow_BBBC001__step__2__FileRenaming___filePattern"
+                    "source": "viz_workflow_BBBC001_phase1__step__2__FileRenaming___filePattern"
                 },
                 "inpDir": {
-                    "source": "viz_workflow_BBBC001__step__1__BbbcDownload/outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__1__BbbcDownload/outDir"
                 },
                 "mapDirectory": {
-                    "source": "viz_workflow_BBBC001__step__2__FileRenaming___mapDirectory"
+                    "source": "viz_workflow_BBBC001_phase1__step__2__FileRenaming___mapDirectory"
                 },
                 "outDir": {
-                    "source": "viz_workflow_BBBC001__step__2__FileRenaming___outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__2__FileRenaming___outDir"
                 },
                 "outFilePattern": {
-                    "source": "viz_workflow_BBBC001__step__2__FileRenaming___outFilePattern"
+                    "source": "viz_workflow_BBBC001_phase1__step__2__FileRenaming___outFilePattern"
                 }
             },
             "out": [
@@ -265,19 +265,19 @@
                 }
             }
         },
-        "viz_workflow_BBBC001__step__3__OmeConverter": {
+        "viz_workflow_BBBC001_phase1__step__3__OmeConverter": {
             "in": {
                 "fileExtension": {
-                    "source": "viz_workflow_BBBC001__step__3__OmeConverter___fileExtension"
+                    "source": "viz_workflow_BBBC001_phase1__step__3__OmeConverter___fileExtension"
                 },
                 "filePattern": {
-                    "source": "viz_workflow_BBBC001__step__3__OmeConverter___filePattern"
+                    "source": "viz_workflow_BBBC001_phase1__step__3__OmeConverter___filePattern"
                 },
                 "inpDir": {
-                    "source": "viz_workflow_BBBC001__step__2__FileRenaming/outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__2__FileRenaming/outDir"
                 },
                 "outDir": {
-                    "source": "viz_workflow_BBBC001__step__3__OmeConverter___outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__3__OmeConverter___outDir"
                 }
             },
             "out": [
@@ -341,19 +341,19 @@
                 }
             }
         },
-        "viz_workflow_BBBC001__step__4__Montage": {
+        "viz_workflow_BBBC001_phase1__step__4__Montage": {
             "in": {
                 "filePattern": {
-                    "source": "viz_workflow_BBBC001__step__4__Montage___filePattern"
+                    "source": "viz_workflow_BBBC001_phase1__step__4__Montage___filePattern"
                 },
                 "inpDir": {
-                    "source": "viz_workflow_BBBC001__step__3__OmeConverter/outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__3__OmeConverter/outDir"
                 },
                 "layout": {
-                    "source": "viz_workflow_BBBC001__step__4__Montage___layout"
+                    "source": "viz_workflow_BBBC001_phase1__step__4__Montage___layout"
                 },
                 "outDir": {
-                    "source": "viz_workflow_BBBC001__step__4__Montage___outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__4__Montage___outDir"
                 }
             },
             "out": [
@@ -435,16 +435,16 @@
                 }
             }
         },
-        "viz_workflow_BBBC001__step__5__ImageAssembler": {
+        "viz_workflow_BBBC001_phase1__step__5__ImageAssembler": {
             "in": {
                 "imgPath": {
-                    "source": "viz_workflow_BBBC001__step__3__OmeConverter/outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__3__OmeConverter/outDir"
                 },
                 "outDir": {
-                    "source": "viz_workflow_BBBC001__step__5__ImageAssembler___outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__5__ImageAssembler___outDir"
                 },
                 "stitchPath": {
-                    "source": "viz_workflow_BBBC001__step__4__Montage/outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__4__Montage/outDir"
                 }
             },
             "out": [
@@ -514,19 +514,19 @@
                 }
             }
         },
-        "viz_workflow_BBBC001__step__6__PrecomputeSlide": {
+        "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide": {
             "in": {
                 "imageType": {
-                    "source": "viz_workflow_BBBC001__step__6__PrecomputeSlide___imageType"
+                    "source": "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___imageType"
                 },
                 "inpDir": {
-                    "source": "viz_workflow_BBBC001__step__5__ImageAssembler/outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__5__ImageAssembler/outDir"
                 },
                 "outDir": {
-                    "source": "viz_workflow_BBBC001__step__6__PrecomputeSlide___outDir"
+                    "source": "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___outDir"
                 },
                 "pyramidType": {
-                    "source": "viz_workflow_BBBC001__step__6__PrecomputeSlide___pyramidType"
+                    "source": "viz_workflow_BBBC001_phase1__step__6__PrecomputeSlide___pyramidType"
                 }
             },
             "out": [
