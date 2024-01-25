@@ -5,7 +5,7 @@ __pycache__
 .venv
 
 # staging directory
-/cwl
+# /cwl
 /wic
 notebooks/compute/
 notebooks/cwl/
@@ -38,4 +38,5 @@ src/wic/
 stitchPathImageAssembler/
 RUNS/
 WIC_STAGING/
+inpDirFileRenaming/
 

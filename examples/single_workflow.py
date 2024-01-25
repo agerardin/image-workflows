@@ -42,7 +42,8 @@ def create_step(url: str) -> api.Step:
     return step
 
 if __name__ == "__main__":
-    bbbc = create_step(bbbc_download_url)
+    # bbbc = create_step(bbbc_download_url)
+    bbbc = api.Step(CWLTOOL_PATH / "BbbcDownload.cwl")
     rename = create_step(filerenaming_url)
     ome_converter = create_step(ome_converter_url)
     montage = create_step(montage_url)
