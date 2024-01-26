@@ -8,13 +8,6 @@ from polus.plugins.transforms.images.apply_flatfield.__main__ import (
 
 from pathlib import Path
 
-
-# # Estimate Flatfield
-# estimate_flatfield.inpDir = ome_converter.outDir
-# estimate_flatfield.filePattern = "d1_x00_y03_p{p:dd}_c0.ome.tif"
-# estimate_flatfield.groupBy = "p"
-# estimate_flatfield.getDarkfield = True
-
 fovs_dir = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/inpDirBasicFlatfieldEstimation")
 ff_dir = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/ffDirApplyFlatfield")
 fovs_pattern = "d1_x00_y03_p{p:dd}_c{c:d}.ome.tif"
