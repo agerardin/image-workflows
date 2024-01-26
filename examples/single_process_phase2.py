@@ -66,16 +66,22 @@ if __name__ == "__main__":
 
     # Estimate Flatfield
     estimate_flatfield.inpDir = ome_converter.outDir
-    estimate_flatfield.filePattern = "d1_x00_y03_p{p:dd}_c0.ome.tif"
-    estimate_flatfield.groupBy = "p"
+    estimate_flatfield.filePattern = "d1_x00_y03_p{p:dd}_c{c:d}.ome.tif"
+    # NOTE groupBy meaning has changed in filepattern2, so want we want is
+    # to estimate across all positions.
+    # estimate_flatfield.groupBy = "p"
+    # NOTE this should be acceptable but something breaks in wic
+    # estimate_flatfield.groupBy = ""
+    estimate_flatfield.groupBy = "c"
     estimate_flatfield.getDarkfield = True
 
     # Apply Flatfield
     apply_flatfield.imgDir = ome_converter.outDir
-    apply_flatfield.img_pattern = "d1_x00_y03_p{p:dd}_c0.ome.tif"
+    apply_flatfield.imgPattern = "d1_x00_y03_p{p:dd}_c{c:d}.ome.tif"
     apply_flatfield.ffDir = estimate_flatfield.outDir
-    apply_flatfield.ffPattern = "d1_x00_y03_p{p:dd}_c0_flatfield.ome.tif"
-    apply_flatfield.dfPattern = "d1_x00_y03_p{p:dd}_c0_darkfield.ome.tif"
+    # NOTE apply flatfield will crash if there is no free variable in the pattern
+    apply_flatfield.ffPattern = "d1_x00_y03_p0\\(0-5\\)_c{c:d}_flatfield.ome.tif"
+    apply_flatfield.dfPattern = "d1_x00_y03_p0\\(0-5\\)_c{c:d}_darkfield.ome.tif"
     
     # Montage
     montage.inpDir = apply_flatfield.outDir
@@ -83,7 +89,7 @@ if __name__ == "__main__":
     montage.layout = "p"
 
     # Image Assembler
-    image_assembler.imgPath = ome_converter.outDir
+    image_assembler.imgPath = apply_flatfield.outDir
     image_assembler.stitchPath = montage.outDir
 
     # Precompute Slide

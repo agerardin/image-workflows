@@ -18,6 +18,17 @@ solara = "^1.25.1"
 polus-plugins = { path = "../polus-plugins", develop = true }
 # workflow-inference-compiler = {git = "https://github.com/PolusAI/workflow-inference-compiler.git", develop=true}
 workflow-inference-compiler = {path= "../workflow-inference-compiler/", develop=true}
+
+# TODOS REMOVE - DEBUG DEPENDENCIES ONLY
+# polus-plugins-regression-basic-flatfield-estimation = {path = "../polus-plugins", develop=true, subdirectory = "regression/basic-flatfield-estimation-plugin"}
+# polus-plugins-transforms-images-apply-flatfield = {path = "../polus-plugins", develop=true, subdirectory = "transforms/images/apply-flatfield-plugin"}
+#jax = { version = "^0.3.22", extras = ["cpu"] }
+#jaxlib = "0.4.23"
+#basicpy = "1.1.0"
+# poetry does not seems to manage pre-release correctly
+preadator = {version = "0.4.0.dev2", allow-prereleases = true}
+
+
 # those are required wic dependencies
 cwl-utils="0.31"
 toil="^5.12"
