@@ -76,12 +76,9 @@ if __name__ == "__main__":
     apply_flatfield.ffDir = estimate_flatfield.outDir
     apply_flatfield.ffPattern = "d1_x00_y03_p{p:dd}_c0_flatfield.ome.tif"
     apply_flatfield.dfPattern = "d1_x00_y03_p{p:dd}_c0_darkfield.ome.tif"
-    apply_flatfield.outDir= montage.inpDir
     
     # Montage
-    # TODO CHECK with Najib why this would not work
-    # montage.inpDir = apply_flatfield.outDir
-    montage.inpDir = ome_converter.outDir
+    montage.inpDir = apply_flatfield.outDir
     montage.filePattern = "d1_x00_y03_p{p:dd}_c0.ome.tif"
     montage.layout = "p"
 
@@ -96,13 +93,12 @@ if __name__ == "__main__":
     precompute_slide.outDir = RUNS
 
 
-    steps = [rename, ome_converter, estimate_flatfield, montage, image_assembler, precompute_slide]
+    steps = [rename, ome_converter, estimate_flatfield, apply_flatfield, montage, image_assembler, precompute_slide]
     workflow = api.Workflow(steps, "experiment", WORKFLOW_PATH)
     workflow._save_yaml()
 
-    # TODO CHECK compiling errors are not propagated back to us, so we don't know where to look
     workflow.compile()
 
-    # workflow.run(debug=True)
+    workflow.run(debug=True)
 
 
