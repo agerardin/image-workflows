@@ -15,7 +15,6 @@ mounts = [
     [f"type=bind,source={ff_dir},target=/outDir"]
     ]
 
-
 args = [
     f"--inpDir /inpDir",
     f"--outDir /outDir",
@@ -25,3 +24,6 @@ args = [
 ]
 
 docker.run(container_image, args, name= container_name, mounts=mounts, remove=True)
+
+# Generate the corresponding command line for debug purpose
+# print (f"docker run -v {fovs_dir.as_posix()}:/inputs -v {ff_dir.as_posix()}:/outputs {container_image} --inpDir=/inputs --filePattern={fovs_pattern} --groupBy={ff_group_by} --outDir=/outputs")
