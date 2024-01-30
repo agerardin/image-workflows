@@ -1,4 +1,4 @@
-class Process():
+class ProcessTemplate():
     pass
 
 
@@ -16,7 +16,7 @@ class IO():
 
 
 
-class Process():
+class ProcessTemplate():
     def __init__(self):
         self.ios = {}
 
@@ -44,15 +44,21 @@ class Process():
             return io
 
 
-class Step(Process):
+class StepTemplate(ProcessTemplate):
     def __init__(self):
         super().__init__()  
 
     def __getattr__(self, name):
-        return super().__getattr__(name)
+        return super().__getattr__(name)   
 
 
-class Workflow(Process):
+class Step:
+    pass
+
+class Workflow():
+    steps : list[Step] = []
+
+class WorkflowTemplate(ProcessTemplate):
     def __init__(self):
         super().__init__()
 
@@ -64,27 +70,34 @@ class Workflow(Process):
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
 
-    def generate(self):
+    def generate(self) -> Workflow :
+        workflow = Workflow()
         print("generate workflow")
-        if not workflow.ios:
+        if not self.ios:
             raise Exception("empty workflow")
         else:
-            for io in workflow.ios:
-                print(io)
+            for io_name in self.ios:
+                print(io_name)
+                io = self.ios[io_name]
+                step = Step()
+                workflow.steps.append(step)
+        return workflow
 
 
-step1 = Step()
+
+
+step1 = StepTemplate()
 step1._out = "Hello"
 step1._in = 23
 
-step2 = Step()
+step2 = StepTemplate()
 step2._in = step1._out
 
 step2._in = "bad"
 step2._out = "result"
 
 
-workflow = Workflow()
+workflow = WorkflowTemplate()
 workflow._image_path = step1._in
 
 workflow.out = step2._out
@@ -93,4 +106,6 @@ print(step2._in.value)
 print(workflow.out.value)
 
 
-workflow.generate()
+w = workflow.generate()
+
+print(w.steps)
