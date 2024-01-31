@@ -25,35 +25,37 @@ RUNS.mkdir(exist_ok=True)
 
 # polus plugins
 plugin_manifest1 = Path("manifest1")
-# here we create amodel fro cwl rather than the file
 plugin1 = getPlugin(plugin_manifest1)
-clt1 = plugin1.translate()
-# wic api 
+
+# saveToCWL originally
+# we can keep as such to remove any dependency between polus plugins and wic api
+clt1 = plugin1.translateToCWL()
+# wic api
 tool1 = getTool(clt1)
 
-# why create astep?
-# different model -> step: expect to ceonnect its io
-# from a top level worklfow / to teop level worklfow / to  another step
-# in another word, indireiction for generating the actual step
+# why create a step?
+# different model -> step: expect to connect its io
+# from a top level worklfow / to top level worklfow / to  another step
+# in another word, indieiction for generating the actual step
 step1 = getStep(tool1)
-
-# but a step could a also be just a blank template
-
 plugin_manifest2 = Path("manifest2")
 plugin2 = getPlugin(plugin_manifest2)
-clt2 = plugin2.translate()
+clt2 = plugin2.translateToCWL()
 tool2 = getTool(clt2)
 step2 = getStep(tool2)
 
 
+# Here workflow have fully defined steps to work from.
+# what's left is just connecting them
 # once we do that, then the children step can connect 
-subworkflow = Workflow([step1, step2], "rocessing")
+subworkflow = Workflow([step1, step2], "processing")
 # pipe plugin1 and 2
 plugin1.output = plugin2.input
 # define the worklfow input
 workflow.input = plugin1.input
 # define the workflow output
 workflow.output = plugin2.output
+
 
 plugin_manifest3 = Path("manifest3")
 plugin3 = getPlugin(plugin_manifest3)
@@ -63,14 +65,15 @@ step3 = getStep(tool3)
 # define the workflow
 # worklfow io can be connect to it child step
 # after the declaration, it can also connect ot a the other steps or the parent worklfow steps.
-workflow = Workflow([subwokrflow, step3], "multiple experiments")
+workflow = Workflow([subworkflow, step3], "multiple experiments")
 workflow.input = subworkflow.input
 workflow.output = step3.output
 
 
 # set missing io
 # type check for scattering
-# this wokrsbecause subworkflwow is sitnrgna nd worklfow ins array[string]
+# this w    orks because subworkflow is string and worklfow is array[string]
+# provide input/output values to workflow so it is fully configured
 workflow.instance(input=[a,b,c,d],output="/home")
 
 
