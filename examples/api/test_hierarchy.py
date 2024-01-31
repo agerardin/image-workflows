@@ -42,6 +42,7 @@ class Process:
             if value.link and value.process != self:
                 print(f"######## connecting {name} with {value.name}")
                 value.target = self
+            self._ios[name] = value
             super().__setattr__(name, value)
             
 
@@ -88,7 +89,10 @@ def _convert_to_cwl_type(value):
 
 
 class Step(Process):
-    pass
+
+    def __str__(self):
+        ios = [item[0] for item in  self._ios.items()]
+        return (',').join(ios)
 
 
 if __name__ == "__main__":
@@ -106,3 +110,5 @@ if __name__ == "__main__":
     # step1.output # this create a new processIO that is unbound
     # step2.input 
     step2.input = step1.output #NOT ALLOWED
+
+    print(step1)
