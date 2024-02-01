@@ -18,6 +18,7 @@ class ProcessIO:
     format: Optional[CwlFormat] = None
     link: Optional[bool] = False
     target: Optional[ProcessIO] = None
+    source: Optional[ProcessIO] = None
 
     def __post_init__(self):
         # if no type is provided, try to get from the value
@@ -41,7 +42,8 @@ class Process:
             print(f"Try to set a new ProcessIO attribute : {name}, {value}")
             if value.link and value.process != self:
                 print(f"######## connecting {name} with {value.name}")
-                value.target = self
+                value.target = name
+                self.source = value.name
             self._ios[name] = value
             super().__setattr__(name, value)
             
@@ -50,7 +52,7 @@ class Process:
             value = ProcessIO(value)
             # if name exists retrieve it and check compatibility
             # create a proxy object
-            pass
+            self._ios[name] = value
             super().__setattr__(name, value)
         # NOTE decision : every other attribute assignment should fail
         else:
@@ -91,15 +93,21 @@ def _convert_to_cwl_type(value):
 class Step(Process):
 
     def __str__(self):
-        ios = [item[0] for item in  self._ios.items()]
-        return (',').join(ios)
+        ios_string = [item[0] for item in  self._ios.items()]
+        return (',').join(ios_string)
+
+    def describe(self):
+        for (io_name, io_value) in  self._ios.items():
+            assert isinstance(io_value, ProcessIO)
+            if not (io_value.target is None):
+                print(f"{io_name} target : {io_value.name}")
 
 
 if __name__ == "__main__":
     step1 = Step()
     step1.name1 = "step1"
 
-    print(step1.name)
+    print(step1.name1)
     step1.validate()
 
     step2 = Step()
@@ -112,3 +120,9 @@ if __name__ == "__main__":
     step2.input = step1.output #NOT ALLOWED
 
     print(step1)
+
+    step1.describe()
+
+
+    print(step2)
+    step2.describe()

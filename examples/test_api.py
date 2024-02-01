@@ -19,10 +19,6 @@ WORKFLOW_PATH.mkdir(exist_ok=True)
 RUNS = (WIC_STAGING / "RUNS").resolve()
 RUNS.mkdir(exist_ok=True)
 
-
-
-
-
 # polus plugins
 plugin_manifest1 = Path("manifest1")
 plugin1 = getPlugin(plugin_manifest1)
