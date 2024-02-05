@@ -1,0 +1,35 @@
+steps:
+- BbbcDownload:
+    in:
+      name: BBBC001
+      outDir: '&inpDirFileRenaming'
+- FileRenaming:
+    in:
+      filePattern: .*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif
+      inpDir: '*inpDirFileRenaming'
+      mapDirectory: map
+      outDir: '&inpDirOmeConverter'
+      outFilePattern: x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif
+- OmeConverter:
+    in:
+      fileExtension: .ome.tif
+      filePattern: .*.tif
+      inpDir: '*inpDirOmeConverter'
+      outDir: '&inpDirMontage'
+- Montage:
+    in:
+      filePattern: d1_x00_y03_p{p:dd}_c0.ome.tif
+      inpDir: '*inpDirMontage'
+      layout: p
+      outDir: '&stitchPathImageAssembler'
+- ImageAssembler:
+    in:
+      imgPath: '*inpDirMontage'
+      outDir: '&inpDirPrecomputeSlide'
+      stitchPath: '*stitchPathImageAssembler'
+- PrecomputeSlide:
+    in:
+      imageType: Intensity
+      inpDir: '*inpDirPrecomputeSlide'
+      outDir: /Users/antoinegerardin/Documents/projects/polus-pipelines/examples/WIC_STAGING/RUNS
+      pyramidType: Zarr

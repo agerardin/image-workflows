@@ -1,0 +1,17 @@
+steps:
+- download_workflow.yml
+  in:
+    name: "BBBC001"
+    outDir: - '&inpDirprocessing_workflow.yml'
+- download_workflow_cleanup.yml
+  in:
+    name: "BBBC001"
+    outDir: - '&inpDirprocessing_workflow.yml'
+- processing_workflow.yml
+  in:
+    scatter:
+      inpDir:
+        # here values would be provided by earlier steps so we would input anything?
+    outDir: 
+        - "/Users/antoinegerardin/Documents/projects/polus-pipelines/examples/WIC_STAGING/RUNS/RUN1"
+        - "/Users/antoinegerardin/Documents/projects/polus-pipelines/examples/WIC_STAGING/RUNS/RUN2"

@@ -1,0 +1,7 @@
+steps:
+- download_workflow.yml
+  in:
+    name: "BBBC001"
+- processing_workflow.yml
+  in:
+    outDir: "/Users/antoinegerardin/Documents/projects/polus-pipelines/examples/WIC_STAGING/RUNS"

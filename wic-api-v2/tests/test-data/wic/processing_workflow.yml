@@ -1,0 +1,16 @@
+- Montage:
+    in:
+      filePattern: d1_x00_y03_p{p:dd}_c0.ome.tif
+      inpDir: '*inpDirMontage'
+      layout: p
+      outDir: '&outDirDownload_workflow.yml'
+- ImageAssembler:
+    in:
+      imgPath: '*inpDirMontage'
+      outDir: '&inpDirPrecomputeSlide'
+      stitchPath: '*stitchPathImageAssembler'
+- PrecomputeSlide:
+    in:
+      imageType: Intensity
+      inpDir: '*inpDirPrecomputeSlide'
+      pyramidType: Zarr

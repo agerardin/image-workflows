@@ -1,0 +1,17 @@
+steps:
+- BbbcDownload:
+  in:
+    name: "BBBC001"
+- FileRenaming:
+    in:
+      filePattern: .*_{row:c}{col:dd}f{f:dd}d{channel:d}.tif
+      inpDir: '*outDirBBBCDownload'
+      mapDirectory: map
+      outDir: '&inpDirOmeConverter'
+      outFilePattern: x{row:dd}_y{col:dd}_p{f:dd}_c{channel:d}.tif
+- OmeConverter:
+    in:
+      fileExtension: .ome.tif
+      filePattern: .*.tif
+      inpDir: '*inpDirOmeConverter'
+      outDir: '&inpDirBasicFlatfieldEstimation'
