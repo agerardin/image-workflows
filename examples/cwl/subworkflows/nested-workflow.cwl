@@ -13,20 +13,14 @@ requirements:
   SubworkflowFeatureRequirement: {}
 
 steps:
-  compile:
-    run: 1st-workflow.cwl
-    in:
-      tarball: create-tar/tar_compressed_java_file
-      name_of_file_to_extract:
-        default: "Hello.java"
-    out: [compiled_class]
-
+  # ok here we create the archive. No need for input
   create-tar:
     in: []
     out: [tar_compressed_java_file]
     run:
       class: CommandLineTool
       requirements:
+        # allow to create files
         InitialWorkDirRequirement:
           listing:
             - entryname: Hello.java
@@ -37,6 +31,7 @@ steps:
                   }
                 }
       inputs: []
+      # here we have hardcoded the argument
       baseCommand: [tar, --create, --file=hello.tar, Hello.java]
       outputs:
         tar_compressed_java_file:
@@ -44,3 +39,12 @@ steps:
           streamable: true
           outputBinding:
             glob: "hello.tar"
+
+  compile:
+    run: 1st-workflow.cwl
+    in:
+      tarball: create-tar/tar_compressed_java_file
+      name_of_file_to_extract:
+        default: "Hello.java"
+    out: [compiled_class]
+

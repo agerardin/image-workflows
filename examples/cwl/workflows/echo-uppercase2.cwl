@@ -19,7 +19,7 @@ steps:
       message: message
     out: [out]
   uppercase:
-    run: ../basic/uppercase.cwl
+    run: ../basic/uppercase2.cwl
     in:
       message:
         source: echo/out

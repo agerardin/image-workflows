@@ -8,6 +8,7 @@ inputs:
     inputBinding:
       prefix: --file
 outputs:
+  # CHECK output is named example_out!
   example_out:
     type: File
     outputBinding:
