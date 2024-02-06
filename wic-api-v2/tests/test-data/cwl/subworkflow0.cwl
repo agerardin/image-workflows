@@ -1,18 +1,25 @@
 cwlVersion: v1.2
 class: Workflow
 
+requirements:
+  SubworkflowFeatureRequirement: {}
 
 inputs:
   msg: string
 
 outputs:
-  msg_file: 
+  new_file:
     type: File
-    outputSource: echo/out_message
+    outputSource: touch/output
 
 steps:
-  echo:
-    run: echo_output_file.cwl
+  echo-uppercase-wf:
+    run: workflow2.cwl
     in:
-      message: msg
-    out: [out_message]
+      msg: msg
+    out: [uppercase_message]
+  touch:
+    run: touch_single.cwl
+    in: 
+      touchfiles: echo-uppercase-wf/uppercase_message
+    out: [output]

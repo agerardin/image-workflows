@@ -1,19 +1,27 @@
 cwlVersion: v1.2
 class: Workflow
 
+requirements:
+  SubworkflowFeatureRequirement: {}
+  ScatterFeatureRequirement: {}
+
 inputs:
-  # workflow input, can be named anything
-  msg: string
+  msg: string[]
 
 outputs:
-  # workflow output, here the result of uppercase
-  uppercase_message: 
-    type: string
-    outputSource: uppercase/uppercase_message
+  new_file:
+    type: File[]
+    outputSource: touch/output
 
-steps:  
-  uppercase:
-    run: uppercase.cwl
+steps:
+  echo-uppercase-wf:
+    scatter: [msg]
+    run: workflow2.cwl
     in:
-      message: msg
+      msg: msg
     out: [uppercase_message]
+  touch:
+    run: touch.cwl
+    in: 
+      touchfiles: echo-uppercase-wf/uppercase_message
+    out: [output]
