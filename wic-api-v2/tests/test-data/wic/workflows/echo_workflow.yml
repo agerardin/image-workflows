@@ -1,0 +1,4 @@
+steps:
+- echo_string:
+    in:
+      message: BBBC001

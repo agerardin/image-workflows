@@ -1,0 +1,10 @@
+digraph "tests/test-data/wic/workflows/echo_workflow.yml" {
+	newrank=True
+	bgcolor=transparent
+	fontcolor=white
+	subgraph "cluster_tests/test-data/wic/workflows/echo_workflow.yml" {
+		label="tests/test-data/wic/workflows/echo_workflow.yml"
+		color=lightblue
+		echo_workflow__step__1__echo_string [label=echo_string fillcolor=lightblue shape=box style="rounded, filled"]
+	}
+}

@@ -7,12 +7,9 @@ requirements:
 
 inputs:
   message_array:
-    type: string[]
-    inputBinding:
-      prefix: -M=
-      itemSeparator: ","
-      separate: false
-      position: 1
+    type:
+      type: array
+      items: string
 
 steps:
   echo:

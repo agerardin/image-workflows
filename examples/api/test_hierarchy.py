@@ -123,6 +123,8 @@ if __name__ == "__main__":
 
     step1.describe()
 
+    step1.output
+
 
     print(step2)
     step2.describe()

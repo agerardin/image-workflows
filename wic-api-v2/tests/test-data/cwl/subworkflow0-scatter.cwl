@@ -3,23 +3,25 @@ class: Workflow
 
 requirements:
   SubworkflowFeatureRequirement: {}
+  ScatterFeatureRequirement: {}
 
 inputs:
-  msg: string
+  msg: string[]
 
 outputs:
   new_file:
-    type: File
+    type: File[]
     outputSource: touch/output
 
 steps:
   echo-uppercase-wf:
-    run: workflow3.cwl
+    scatter: [msg]
+    run: workflow2.cwl
     in:
       msg: msg
     out: [uppercase_message]
   touch:
-    run: touch_single.cwl
+    run: touch.cwl
     in: 
       touchfiles: echo-uppercase-wf/uppercase_message
     out: [output]
