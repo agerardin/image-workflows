@@ -1,0 +1,211 @@
+jsonschema.exceptions.ValidationError: {'echo_string': {'in': {'message': 'BBBC001'}, 'out': {'message_string': '&message'}}} is not valid under any of the given schemas
+
+Failed validating 'anyOf' in schema['properties']['steps']['items']:
+    {'anyOf': [{'anyOf': [{'$id': 'tools/touch_single.json',
+                           '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                           'additionalProperties': False,
+                           'errorMessage': 'Property is not allowed. IS '
+                                           'YOUR INDENTATION CORRECT?',
+                           'properties': {'touch_single': {'additionalProperties': False,
+                                                           'description': '',
+                                                           'errorMessage': 'Property '
+                                                                           'is '
+                                                                           'not '
+                                                                           'allowed. '
+                                                                           'IS '
+                                                                           'YOUR '
+                                                                           'INDENTATION '
+                                                                           'CORRECT?',
+                                                           'properties': {'in': {'additionalProperties': False,
+                                                                                 'errorMessage': 'Property '
+                                                                                                 'is '
+                                                                                                 'not '
+                                                                                                 'allowed. '
+                                                                                                 'IS '
+                                                                                                 'YOUR '
+                                                                                                 'INDENTATION '
+                                                                                                 'CORRECT?',
+                                                                                 'properties': {'filename': {'anyOf': [{'description': '',
+                                                                                                                        'minLength': 1,
+                                                                                                                        'title': '',
+                                                                                                                        'type': 'string'},
+                                                                                                                       {'description': '',
+                                                                                                                        'minLength': 1,
+                                                                                                                        'title': '',
+                                                                                                                        'type': 'string'}]}},
+                                                                                 'type': 'object'},
+                                                                          'out': {'items': {'enum': ['output'],
+                                                                                            'type': 'string'},
+                                                                                  'type': 'array'},
+                                                                          'scatter': {'items': {'anyOf': [{'anyOf': [{'description': '',
+                                                                                                                      'minLength': 1,
+                                                                                                                      'title': '',
+                                                                                                                      'type': 'string'},
+                                                                                                                     {'description': '',
+                                                                                                                      'minLength': 1,
+                                                                                                                      'title': '',
+                                                                                                                      'type': 'string'}],
+                                                                                                           'const': 'filename'}]},
+                                                                                      'type': 'array'},
+                                                                          'scatterMethod': {'enum': ['dotproduct',
+                                                                                                     'flat_crossproduct',
+                                                                                                     'nested_crossproduct'],
+                                                                                            'type': 'string'}},
+                                                           'title': '',
+                                                           'type': 'object'}},
+                           'type': 'object'},
+                          {'additionalProperties': False,
+                           'errorMessage': 'Property is not allowed. IS '
+                                           'YOUR INDENTATION CORRECT?',
+                           'properties': {'touch_single': {'type': 'null'}},
+                           'type': 'object'}]},
+               {'anyOf': [{'$id': 'tools/echo_string.json',
+                           '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                           'additionalProperties': False,
+                           'errorMessage': 'Property is not allowed. IS '
+                                           'YOUR INDENTATION CORRECT?',
+                           'properties': {'echo_string': {'additionalProperties': False,
+                                                          'description': 'Take '
+                                                                         'a '
+                                                                         'user '
+                                                                         'input '
+                                                                         'and '
+                                                                         'generate '
+                                                                         'a '
+                                                                         'cwl '
+                                                                         'string '
+                                                                         'for '
+                                                                         'it.',
+                                                          'errorMessage': 'Property '
+                                                                          'is '
+                                                                          'not '
+                                                                          'allowed. '
+                                                                          'IS '
+                                                                          'YOUR '
+                                                                          'INDENTATION '
+                                                                          'CORRECT?',
+                                                          'properties': {'in': {'additionalProperties': False,
+                                                                                'errorMessage': 'Property '
+                                                                                                'is '
+                                                                                                'not '
+                                                                                                'allowed. '
+                                                                                                'IS '
+                                                                                                'YOUR '
+                                                                                                'INDENTATION '
+                                                                                                'CORRECT?',
+                                                                                'properties': {'message': {'anyOf': [{'description': '',
+                                                                                                                      'minLength': 1,
+                                                                                                                      'title': '',
+                                                                                                                      'type': 'string'},
+                                                                                                                     {'description': '',
+                                                                                                                      'minLength': 1,
+                                                                                                                      'title': '',
+                                                                                                                      'type': 'string'}]}},
+                                                                                'type': 'object'},
+                                                                         'out': {'items': {'enum': ['message_string'],
+                                                                                           'type': 'string'},
+                                                                                 'type': 'array'},
+                                                                         'scatter': {'items': {'anyOf': [{'anyOf': [{'description': '',
+                                                                                                                     'minLength': 1,
+                                                                                                                     'title': '',
+                                                                                                                     'type': 'string'},
+                                                                                                                    {'description': '',
+                                                                                                                     'minLength': 1,
+                                                                                                                     'title': '',
+                                                                                                                     'type': 'string'}],
+                                                                                                          'const': 'message'}]},
+                                                                                     'type': 'array'},
+                                                                         'scatterMethod': {'enum': ['dotproduct',
+                                                                                                    'flat_crossproduct',
+                                                                                                    'nested_crossproduct'],
+                                                                                           'type': 'string'}},
+                                                          'title': 'generate '
+                                                                   'a cwl '
+                                                                   'string',
+                                                          'type': 'object'}},
+                           'type': 'object'},
+                          {'additionalProperties': False,
+                           'errorMessage': 'Property is not allowed. IS '
+                                           'YOUR INDENTATION CORRECT?',
+                           'properties': {'echo_string': {'type': 'null'}},
+                           'type': 'object'}]},
+               {'anyOf': [{'$id': 'tools/touch_array.json',
+                           '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                           'additionalProperties': False,
+                           'errorMessage': 'Property is not allowed. IS '
+                                           'YOUR INDENTATION CORRECT?',
+                           'properties': {'touch_array': {'additionalProperties': False,
+                                                          'description': '',
+                                                          'errorMessage': 'Property '
+                                                                          'is '
+                                                                          'not '
+                                                                          'allowed. '
+                                                                          'IS '
+                                                                          'YOUR '
+                                                                          'INDENTATION '
+                                                                          'CORRECT?',
+                                                          'properties': {'in': {'additionalProperties': False,
+                                                                                'errorMessage': 'Property '
+                                                                                                'is '
+                                                                                                'not '
+                                                                                                'allowed. '
+                                                                                                'IS '
+                                                                                                'YOUR '
+                                                                                                'INDENTATION '
+                                                                                                'CORRECT?',
+                                                                                'properties': {'touchfiles': {'anyOf': [{'description': '',
+                                                                                                                         'minLength': 1,
+                                                                                                                         'title': '',
+                                                                                                                         'type': 'string'},
+                                                                                                                        {'description': '',
+                                                                                                                         'items': {'type': 'string'},
+                                                                                                                         'title': '',
+                                                                                                                         'type': 'array'}]}},
+                                                                                'type': 'object'},
+                                                                         'out': {'items': {'enum': ['output'],
+                                                                                           'type': 'string'},
+                                                                                 'type': 'array'},
+                                                                         'scatter': {'items': {'anyOf': [{'anyOf': [{'description': '',
+                                                                                                                     'minLength': 1,
+                                                                                                                     'title': '',
+                                                                                                                     'type': 'string'},
+                                                                                                                    {'description': '',
+                                                                                                                     'items': {'type': 'string'},
+                                                                                                                     'title': '',
+                                                                                                                     'type': 'array'}],
+                                                                                                          'const': 'touchfiles'}]},
+                                                                                     'type': 'array'},
+                                                                         'scatterMethod': {'enum': ['dotproduct',
+                                                                                                    'flat_crossproduct',
+                                                                                                    'nested_crossproduct'],
+                                                                                           'type': 'string'}},
+                                                          'title': '',
+                                                          'type': 'object'}},
+                           'type': 'object'},
+                          {'additionalProperties': False,
+                           'errorMessage': 'Property is not allowed. IS '
+                                           'YOUR INDENTATION CORRECT?',
+                           'properties': {'touch_array': {'type': 'null'}},
+                           'type': 'object'}]},
+               {'additionalProperties': False,
+                'errorMessage': 'Property is not allowed. IS YOUR '
+                                'INDENTATION CORRECT?',
+                'properties': {'python_script': {'additionalProperties': False,
+                                                 'errorMessage': 'Property '
+                                                                 'is not '
+                                                                 'allowed. '
+                                                                 'IS YOUR '
+                                                                 'INDENTATION '
+                                                                 'CORRECT?',
+                                                 'properties': {'in': {'additionalProperties': True,
+                                                                       'properties': {'script': {'minLength': 1,
+                                                                                                 'type': 'string'}},
+                                                                       'type': 'object'}},
+                                                 'type': 'object'}},
+                'type': 'object'}],
+     'minItems': 1,
+     'title': 'Valid workflow steps'}
+
+On instance['steps'][0]:
+    {'echo_string': {'in': {'message': 'BBBC001'},
+                     'out': {'message_string': '&message'}}}

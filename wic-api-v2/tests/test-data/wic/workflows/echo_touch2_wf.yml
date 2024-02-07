@@ -1,0 +1,11 @@
+outputs:
+    pdb_path:
+      type: File
+      outputSource: echo_touch2_wf__step__2__touch_single/output
+
+steps:
+- echo_string:
+    in:
+      message: BBBC001
+- touch_single:
+    

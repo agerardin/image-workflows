@@ -1,0 +1,6 @@
+steps:
+- echo_string:
+    in:
+      message: BBBC001
+- touch_single:
+    
