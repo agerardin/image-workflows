@@ -1,0 +1,15 @@
+# CAUTION - THIS IS FAILING
+
+steps:
+- echo_uppercase_explicit_wic2_wf.yml:
+    in:
+      #message: 
+      echo_uppercase_explicit_wic2_wf__step__1__echo_string_wic_compatible___message:
+        BBBC001
+      # subworkflow_explicit__step__1__echo_uppercase_explicit_wic2_wf.yml___echo_uppercase_explicit_wic2_wf__step__2__uppercase2_wic_compatible2___uppercase_message:
+      #   "&uppercase_msg"
+      echo_uppercase_explicit_wic2_wf__step__2__uppercase2_wic_compatible2___uppercase_message:
+        "&uppercase_msg"
+- touch_single:
+    in:
+      filename: "*uppercase_msg"

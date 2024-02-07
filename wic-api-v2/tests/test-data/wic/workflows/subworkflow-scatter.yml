@@ -1,7 +1,10 @@
 steps:
 - echo_uppercase_explicit_wic_wf.yml:
+    scatter:
+      - echo_uppercase_explicit_wic_wf__step__1__echo_string_wic_compatible___message
     in:
       #message: 
       echo_uppercase_explicit_wic_wf__step__1__echo_string_wic_compatible___message:
         BBBC001
 - touch_single:
+    scatter:

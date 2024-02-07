@@ -1,0 +1,11 @@
+steps:
+- echo_string:
+    in:
+      message: BBBC001
+    out:
+      message_string: '&my_stdout'
+- touch_single:
+    in:
+      filename: '*my_stdout'
+    
+
