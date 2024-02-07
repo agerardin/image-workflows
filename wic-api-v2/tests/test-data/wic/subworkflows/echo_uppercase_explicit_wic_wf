@@ -1,12 +1,13 @@
 steps:
 - echo_string_wic_compatible:
     in:
-      message: BBBC001
+      message: bbbc001
       # See how we need to : - create those dummy parameters in the clts
       # cannot use out: section but reference those inputs like that
       stdout_string: '&my_stdout'
-- touch_single:
+- uppercase2_wic_compatible:
     in:
-      filename: '*my_stdout'
+      message: '*my_stdout'
     
+
 

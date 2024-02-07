@@ -1,0 +1,6 @@
+steps:
+- echo_uppercase_explicit_wic_wf.yml:
+  in:
+    message: 
+      BBBC001
+- touch_single:
