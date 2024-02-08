@@ -52,7 +52,7 @@ step4.inputs[0].source = step3.outputs[0]
 
 # if we scatter, we need to promote typing of inputs.
 # outputs are also promoted
-wf2 = Workflow(wf1.inputs,[outputD],[step3,step4],scatter=True)
+wf2 = Workflow(wf1.inputs,[outputD],[step3,step4],scatter=["fdfds"])
 
 
 wf2.compile()

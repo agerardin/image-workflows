@@ -1,0 +1,9 @@
+steps:
+- echo_uppercase.yml:
+    in:
+      message: BBBC001
+      uppercase_message: '&upper_msg'
+# - touch:  # We can use inference to match the auto-generated output names (from the subworkflow) to input_string
+- touch:
+    in:
+      input_string: '*upper_msg'  # Or we can use an explicit edge

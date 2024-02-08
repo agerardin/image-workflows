@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import TypeVar, Generic, Optional
+from typing import Any, TypeVar, Generic, Optional
 
 T = TypeVar('T')
 
@@ -25,10 +25,14 @@ class StepIO(Generic[T]):
     sink: Optional[StepIO[T]] = None
     value: Optional[T] = None
 
+
 @dataclass
 class Step():
     process: Process
     context: Optional[Workflow] = None
+    scatter: Optional[list[str]] = None
+    # replace with enum
+    scatter_method: Optional[str] = None
     
     def __post_init__(self):
         self.inputs : list[StepIO] = []
@@ -38,6 +42,19 @@ class Step():
         for output in self.process.outputs:
             self.outputs.append(StepIO(output))
         
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        """ Basic mechanism for linking step IO.
+        
+            Attributes that are not IOs or part of state management
+            are stored normally.
+            NOTE we may have a schema to intercept attributes that
+            are allowed in cwl.
+        """
+        super().__setattr__(__name, __value)
+
+    def __getattribute__(self, __name: str) -> Any:
+        """Basic mechanism for linking step IO."""
+        super().__getattribute__(__name)
 
 @dataclass
 class Workflow(Process):
