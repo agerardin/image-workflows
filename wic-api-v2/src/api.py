@@ -52,10 +52,11 @@ class CLTOutput(Output):
         super().__init__(name, type)
 
 class WorkflowOutput(Output):
-    def __init__(self, cwl_input: cwl_parser.WorkflowOutputParameter):
-        name = cwl_input.id.split("#")[-1]
-        type = IOType(cwl_input.type)
+    def __init__(self, cwl_output: cwl_parser.WorkflowOutputParameter):
+        name = cwl_output.id.split("#")[-1]
+        type = IOType(cwl_output.type)
         super().__init__(name, type)
+        self.outputSource = cwl_output.outputSource.split("#")[-1]
 
 @dataclass
 class Process:
@@ -183,9 +184,16 @@ class Workflow(Process):
                     (cwl_step_name, cwl_step_input_name) = cwl_step_input.id.split("#")[-1].split('/')
                     cwl_step_input_source = cwl_step_input.source.split("#")[-1]
                     input = inputs.get(cwl_step_input_source)
+                    #if we have a step connected to a workflow input
                     if input:
                         input.step_io = steps[cwl_step_name].inputs[cwl_step_input_name]
-                        print(f"input : {input.step_io}")
+
+            for output in outputs.values():
+                for cwl_step_output in cwl_step.out:
+                    if cwl_step_output.split("#")[-1] == output.outputSource:
+                        (cwl_step_name, cwl_step_output) = output.outputSource.split("/")
+                        steps[cwl_step_name].outputs[cwl_step_output].sink = output
+                        print(f"outputSource : {output.outputSource}")
         
         self.steps = steps
         super().__init__(inputs, outputs)
