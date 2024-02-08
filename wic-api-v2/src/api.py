@@ -3,29 +3,49 @@ import cwl_utils.parser as cwl_parser
 from dataclasses import dataclass
 from typing import Any, TypeVar, Generic, Optional
 from pathlib import Path
+from enum import Enum
+
 
 T = TypeVar('T')
 
+class IOType(Enum):
+    STRING = "string"
 @dataclass
 class IO(Generic[T]):
     name: str
+    type: IOType
+
+class Input(IO):
+    def __init__(self, cwl_input: cwl_parser.InputParameter):
+        name = cwl_input.id.split("#")[-1]
+        type = IOType(cwl_input.type)
+        super().__init__(name, type)
+
+class Output(IO):
+    def __init__(self, cwl_output: cwl_parser.OutputParameter):
+        name = cwl_output.id.split("#")[-1]
+        type = IOType(cwl_output.type)
+        super().__init__(name, type)
+
 
 @dataclass
 class Process:
-    # this would be dictionaries
-    inputs: list[IO]
-    outputs: list[IO]
-
+    # TODO CHECK type
+    inputs: dict[str, IO]
+    outputs: dict[str, IO]
 
 class CLT(Process):
     clt_file: Optional[Path] = None
     
     def __init__(self, 
-                 inputs: Optional[list[IO]] = None,
-                 outputs: Optional[list[IO]] = None,
+                 inputs: Optional[list[Input]] = None,
+                 outputs: Optional[list[Output]] = None,
                  clt_file: Optional[Path] = None):
 
         if not clt_file is None:
+            # TODO CHECK or can we?
+            if inputs is not None or outputs is not None :
+                raise Exception("cannot have inputs or outputs definitions and a clt file")
             # TODO CHECK rely on pydantic for typechecking?
             # TODO at a minimum, better exception and wraps \
             # into PydanticError
@@ -34,20 +54,15 @@ class CLT(Process):
             if not clt_file.resolve().exists():
                 raise FileNotFoundError()
             parsed_clt = cwl_parser.load_document_by_uri(clt_file)
-            inputs = self.parse_inputs(parsed_clt.inputs)
-            outputs = self.parse_outputs(parsed_clt.outputs)
-        
+            inputs = [Input(cwl_input) for cwl_input in parsed_clt.inputs]
+            outputs = [Output(cwl_output) for cwl_output in parsed_clt.outputs]
+
+        if inputs is not None:
+            inputs = {cwl_input.name: cwl_input for cwl_input in inputs}
+        if inputs is not None:
+            outputs = {cwl_output.name: cwl_output for cwl_output in outputs}
+
         super().__init__(inputs, outputs)
-
-    def parse_inputs(self, cwl_inputs: list[cwl_parser.InputParameter]):
-        input_names = [inp.id.split("#")[-1] for inp in cwl_inputs]
-        print(input_names)
-        return [IO(name) for name in input_names]
-
-    def parse_outputs(self, cwl_outputs: list[cwl_parser.OutputParameter]):
-        output_names = [inp.id.split("#")[-1] for inp in cwl_outputs]
-        print(output_names)
-        return [IO(name) for name in output_names]
 
 @dataclass
 class StepIO(Generic[T]):
