@@ -34,6 +34,12 @@ class WorkflowInput(Input):
     def __init__(self, cwl_input: cwl_parser.WorkflowInputParameter):
         name = cwl_input.id.split("#")[-1]
         type = IOType(cwl_input.type)
+        # TODO REMOVE
+        # for step in steps:
+        #     for input in step.inputs:
+        #         if input:
+        #             self.source = input
+            
         super().__init__(name, type)
 
 class Output(IO):
@@ -140,8 +146,17 @@ class Workflow(Process):
             if steps is not None:
                 raise Exception("cannot have steps and a clt file")
             parsed_workflow = super().load_cwl(workflow_file)
-            steps = []
+
+            # workflows inputs / outputs
+            inputs = [WorkflowInput(cwl_input) for cwl_input in parsed_workflow.inputs]
+            outputs = [WorkflowOutput(cwl_output) for cwl_output in parsed_workflow.outputs]
+            inputs = {cwl_input.name: cwl_input for cwl_input in inputs}
+            outputs = {cwl_output.name: cwl_output for cwl_output in outputs}
+
+            # workflow steps
+            steps = {}
             for cwl_step in parsed_workflow.steps:
+                step_name = cwl_step.id.split("#")[-1]
                 # TODO CHECK that this cover all cases
                 cwl_file = Path(urlparse(cwl_step.run).path)
                 # TODO CHECK parsed twice, we could just load the yaml
@@ -152,8 +167,7 @@ class Workflow(Process):
                     process = Workflow(workflow_file=cwl_file)
                 if parsed_process.class_ == "CommandLineTool":
                     process = CLT(clt_file=cwl_file)
-                step = Step(process)
-                steps.append(step)
+                steps[step_name] = Step(process)
 
             # TODO for each step, check every in :
             # - if in is another step output remember and link them afterwards
@@ -163,11 +177,15 @@ class Workflow(Process):
             # - every out should have a source that is a step. we need to create
             # so the workflow output becomes the sink.
 
-            inputs = [WorkflowInput(cwl_input) for cwl_input in parsed_workflow.inputs]
-            outputs = [WorkflowOutput(cwl_output) for cwl_output in parsed_workflow.outputs]
-        
-        inputs = {cwl_input.name: cwl_input for cwl_input in inputs}
-        outputs = {cwl_output.name: cwl_output for cwl_output in outputs}
+            # connect workflow inputs to stepIO
+            for cwl_step in parsed_workflow.steps:
+                for cwl_step_input in cwl_step.in_:
+                    (cwl_step_name, cwl_step_input_name) = cwl_step_input.id.split("#")[-1].split('/')
+                    cwl_step_input_source = cwl_step_input.source.split("#")[-1]
+                    input = inputs.get(cwl_step_input_source)
+                    if input:
+                        input.step_io = steps[cwl_step_name].inputs[cwl_step_input_name]
+                        print(f"input : {input.step_io}")
         
         self.steps = steps
         super().__init__(inputs, outputs)
