@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from typing import Any, TypeVar, Generic, Optional
 from pathlib import Path
 from enum import Enum
-import itertools
+from urllib.parse import urlparse
 
 
 T = TypeVar('T')
 
-class IOType(Enum):
-    STRING = "string"
+class IOType(str, Enum):
+    STRING = "string",
+    FILE = "File"
 
 @dataclass
 class IO(Generic[T]):
@@ -21,8 +22,16 @@ dataclass
 class Input(IO):
     pass
 
+# TODO All cwl IO have name and type encoded the same way so maybe we could 
+# have a factory to create IO from them and factor the code there.
 class CLTInput(Input):
     def __init__(self, cwl_input: cwl_parser.InputParameter):
+        name = cwl_input.id.split("#")[-1]
+        type = IOType(cwl_input.type)
+        super().__init__(name, type)
+
+class WorkflowInput(Input):
+    def __init__(self, cwl_input: cwl_parser.WorkflowInputParameter):
         name = cwl_input.id.split("#")[-1]
         type = IOType(cwl_input.type)
         super().__init__(name, type)
@@ -36,9 +45,14 @@ class CLTOutput(Output):
         type = IOType(cwl_output.type)
         super().__init__(name, type)
 
+class WorkflowOutput(Output):
+    def __init__(self, cwl_input: cwl_parser.WorkflowOutputParameter):
+        name = cwl_input.id.split("#")[-1]
+        type = IOType(cwl_input.type)
+        super().__init__(name, type)
+
 @dataclass
 class Process:
-    # TODO CHECK type
     inputs: dict[str, Input]
     outputs: dict[str, Output]
 
@@ -72,12 +86,13 @@ class CLT(Process):
         if inputs is not None:
             outputs = {cwl_output.name: cwl_output for cwl_output in outputs}
 
+        # TODO CHECK if casting to Input and Output is ok
+        # TODO CHECK how pydantic manages that for serialization
         super().__init__(inputs, outputs)
 
 # TODO CHECK we may want to discriminate inputs and outputs
 # This will depends on the step linking behavior we want to 
 # implement.
-
 @dataclass
 class StepIO():
     io: IO[IOType]
@@ -115,6 +130,8 @@ class Workflow(Process):
     # but we should have list of names for those we want to expose 
     # to the outside world.
 
+    # TODO CHECK Maybe all those should be factory methods,
+    # and we try to leave the model as lean as possible.
     def __init__(self, 
                 steps: list[Step] = None,
                 workflow_file: Optional[Path] = None):
@@ -122,9 +139,38 @@ class Workflow(Process):
         if not workflow_file is None:
             if steps is not None:
                 raise Exception("cannot have steps and a clt file")
-            super().load_cwl(workflow_file)
+            parsed_workflow = super().load_cwl(workflow_file)
+            steps = []
+            for cwl_step in parsed_workflow.steps:
+                # TODO CHECK that this cover all cases
+                cwl_file = Path(urlparse(cwl_step.run).path)
+                # TODO CHECK parsed twice, we could just load the yaml
+                parsed_process = super().load_cwl(cwl_file)
+                # TODO check if we can have a better test
+                # TODO deal with exception
+                if parsed_process.class_ == "Workflow":
+                    process = Workflow(workflow_file=cwl_file)
+                if parsed_process.class_ == "CommandLineTool":
+                    process = CLT(clt_file=cwl_file)
+                step = Step(process)
+                steps.append(step)
 
-        # super().__init__(inputs, outputs)
+            # TODO for each step, check every in :
+            # - if in is another step output remember and link them afterwards
+            # - if in is a workflow input, we need to create a indirection so when we
+            #   link this input, we are actually checking we can link
+            # TODO for each step, check every out:
+            # - every out should have a source that is a step. we need to create
+            # so the workflow output becomes the sink.
+
+            inputs = [WorkflowInput(cwl_input) for cwl_input in parsed_workflow.inputs]
+            outputs = [WorkflowOutput(cwl_output) for cwl_output in parsed_workflow.outputs]
+        
+        inputs = {cwl_input.name: cwl_input for cwl_input in inputs}
+        outputs = {cwl_output.name: cwl_output for cwl_output in outputs}
+        
+        self.steps = steps
+        super().__init__(inputs, outputs)
   
 
     def compile(self):
