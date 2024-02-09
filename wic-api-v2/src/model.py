@@ -103,6 +103,7 @@ class Workflow(Process):
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
     requirements: Optional[list[ProcessRequirement]] = None
+    class_: str = 'Workflow'
     # TODO maybe have transformation to store dict
     #inputs: dict[Id, WorkflowInputParameter]
     #outputs: dict[Id, WorkflowOutputParameter]
@@ -117,6 +118,7 @@ class CommandLineTool(Process):
    # but only if we don't need ordering
    # inputs: dict[Id, CommandInputParameter]
    # outputs: dict[Id, CommandOutputParameter]
+   class_: str = 'CommandLineTool'
    stdout: Optional[str] = None
    doc: Optional[str] = ""
    label: Optional[str] = ""
@@ -226,10 +228,15 @@ echo_out_message_string = step1.out[0]
 uppercase_in_message = step2.in_[0]
 uppercase_in_message.source = echo_out_message_string
 
-builder = WorkflowBuilder("wf3", steps=[step1, step2])
-wf3 = builder()
+wf2_builder = WorkflowBuilder("wf3", steps=[step1, step2])
+wf3 = wf2_builder()
 print(wf3)
 
 step_builder3 = StepBuilder(wf3)
 step3 = step_builder3()
 print(step3)
+
+wf4_builder = WorkflowBuilder("wf4", steps = [step3, step2])
+step4 = wf4_builder()
+print(step4)
+
