@@ -199,6 +199,9 @@ class WorkflowBuilder():
         for step in kwds.get("steps"):
             step_inputs = [{"id": id + "/" + step.id + "/" + input.id, "type":input.type} for input in step.in_ if input.source == 'UNSET']
             inputs = inputs + step_inputs
+
+            print(f"run {step.run}")
+
             step_outputs = [
                             {
                             "id": id + "/" + step.id + "/" + output,
@@ -210,6 +213,10 @@ class WorkflowBuilder():
 
         kwds.setdefault("inputs", inputs)
         kwds.setdefault("outputs", outputs)
+
+        # NOTE for this to work, we would need to serialize to disk
+        # TODO CHECK if there is a better way to solve this
+        id = (Path() / id).resolve().as_uri()
 
         self.workflow = Workflow(id,*args,**kwds, from_builder=True)
 
@@ -258,13 +265,13 @@ wf2_builder = WorkflowBuilder("wf3", steps=[step1, step2])
 wf3 = wf2_builder()
 print(wf3)
 
-# step_builder3 = StepBuilder(wf3)
-# step3 = step_builder3()
-# print(step3)
+step_builder3 = StepBuilder(wf3)
+step3 = step_builder3()
+print(step3)
 
-# wf4_builder = WorkflowBuilder("wf4", steps = [step3, step2])
-# step4 = wf4_builder()
-# print(step4)
+wf4_builder = WorkflowBuilder("wf4", steps = [step3])
+step4 = wf4_builder()
+print(step4)
 
 
 
