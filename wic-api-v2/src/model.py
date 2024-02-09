@@ -10,6 +10,17 @@ from rich import print
 
 Id = NewType("Id", str)
 
+class ProcessRequirement(BaseModel):
+    class_: str = Field(..., alias='class')   
+
+@dataclass
+class SubworkflowFeatureRequirement(ProcessRequirement):
+    pass
+
+class SoftwareRequirement:
+    pass
+
+
 @dataclass
 class Process():
     id: str
@@ -87,6 +98,7 @@ class Workflow(Process):
     inputs: list[WorkflowInputParameter]
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
+    requirements: Optional[list[ProcessRequirement]] = None
     #inputs: dict[Id, WorkflowInputParameter]
     #outputs: dict[Id, WorkflowOutputParameter]
 
@@ -114,14 +126,6 @@ class Operation:
     pass
 
 
-
-class ProcessRequirement:
-    pass
-
-class SoftwareRequirement:
-    pass
-
-
 cwl_file = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/echo_string.cwl")
 
 with cwl_file.open("r", encoding="utf-8") as file:
@@ -140,3 +144,9 @@ cwl_wf1 = cwl_parser.load_document_by_uri(workflow_file)
 yaml_wf1 = cwl_parser.save(cwl_wf1)
 wf1 = Workflow(**yaml_wf1)
 print(wf1)
+
+subworkflow_file = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/subworkflow1.cwl")
+cwl_wf2 = cwl_parser.load_document_by_uri(subworkflow_file)
+yaml_wf2 = cwl_parser.save(cwl_wf2)
+wf2 = Workflow(**yaml_wf2)
+print(wf2)
