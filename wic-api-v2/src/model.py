@@ -154,7 +154,7 @@ yaml_wf2 = cwl_parser.save(cwl_wf2)
 wf2 = Workflow(**yaml_wf2)
 print(wf2)
 
-class CLTStepBuilder():
+class StepBuilder():
     """Builder for a step object.
     
     Create a step from a clt.
@@ -165,7 +165,7 @@ class CLTStepBuilder():
     workflow step are removed.
     """
 
-    def __init__(self, clt : CommandLineTool):
+    def __init__(self, clt : Process):
         # TODO REVIEW tentative
         id = Path(clt.id).stem
         run = clt.id
@@ -182,9 +182,20 @@ class WorkflowBuilder():
     Enable iteratively to create a workflow.
     """
     def __init__(self, id: str, *args: Any, **kwds: Any):
-        kwds.setdefault("inputs", [])
-        kwds.setdefault("outputs", [])
         kwds.setdefault("steps", [])
+        # collect all step inputs and create a workflow input for each
+        # collect all step outputs and create a workflow output for each
+        inputs = []
+        outputs = []
+        for step in kwds.get("steps"):
+            step_inputs = [{"id": step.id + "/" + input.id, "type":"TYPE_MISSING"} for input in step.in_]
+            inputs = inputs + step_inputs
+            step_outputs = [{"id":step.id + "/" + output, "type": "TYPE_MISSING", "outputSource": step.id + "/" + output} for output in step.out]
+            outputs = outputs + step_outputs
+
+        kwds.setdefault("inputs", inputs)
+        kwds.setdefault("outputs", outputs)
+
         self.workflow = Workflow(id,*args,**kwds)
 
     def __call__(self) -> Any:
@@ -196,7 +207,7 @@ class WorkflowBuilder():
 print(clt)
 
 # build a first step
-step_builder = CLTStepBuilder(clt)
+step_builder = StepBuilder(clt)
 step1 = step_builder()
 print(step1)
 
@@ -207,7 +218,7 @@ yaml_clt2 = cwl_parser.save(cwl_clt2)
 clt2 = CommandLineTool(**yaml_clt2)
 
 # build our second step
-step_builder2 = CLTStepBuilder(clt2)
+step_builder2 = StepBuilder(clt2)
 step2 = step_builder2()
 print(step2)
 
@@ -218,3 +229,7 @@ uppercase_in_message.source = echo_out_message_string
 builder = WorkflowBuilder("wf3", steps=[step1, step2])
 wf3 = builder()
 print(wf3)
+
+step_builder3 = StepBuilder(wf3)
+step3 = step_builder3()
+print(step3)
