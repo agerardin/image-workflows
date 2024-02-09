@@ -2,11 +2,14 @@ from typing import Union
 from pydantic import BaseModel, ConfigDict, Field
 import cwl_utils.parser as cwl_parser
 from pathlib import Path
-from yaml import safe_load
+from yaml import safe_load, dump
 from pydantic.dataclasses import dataclass
 from typing import NewType, Optional, Any
 from rich import print
-
+from urllib.parse import unquote, urlparse
+# TODO update to v2 if we want to go this route
+# RootModel us used to serialize dataclasses
+# from pydantic import RootModel
 
 Id = NewType("Id", str)
 
@@ -107,6 +110,7 @@ class Workflow(Process):
     requirements: Optional[list[ProcessRequirement]] = None
     from_builder: Optional[bool] = False
     class_: str = 'Workflow'
+    cwlVersion: str = "v1.2"
     # TODO maybe have transformation to store dict
     #inputs: dict[Id, WorkflowInputParameter]
     #outputs: dict[Id, WorkflowOutputParameter]
@@ -122,6 +126,7 @@ class CommandLineTool(Process):
    # inputs: dict[Id, CommandInputParameter]
    # outputs: dict[Id, CommandOutputParameter]
    class_: str = 'CommandLineTool'
+   cwlVersion: str = "v1.2"
    stdout: Optional[str] = None
    doc: Optional[str] = ""
    label: Optional[str] = ""
@@ -200,12 +205,22 @@ class WorkflowBuilder():
             step_inputs = [{"id": id + "/" + step.id + "/" + input.id, "type":input.type} for input in step.in_ if input.source == 'UNSET']
             inputs = inputs + step_inputs
 
+            step_types = {}
+
             print(f"run {step.run}")
+            cwl_file = cwl_parser.load_document_by_uri(step.run)
+            yaml_cwl = cwl_parser.save(cwl_file)
+            if cwl_file.class_ == "CommandLineTool":
+                clt = CommandLineTool(**yaml_cwl)
+                output_types = {output.id:output.type for output in clt.outputs}
+                step_types[step.id]= output_types
+
+            #TODO IMPLEMENT same thing for workflow (need to recursive load types)
 
             step_outputs = [
                             {
                             "id": id + "/" + step.id + "/" + output,
-                            "type": "TYPE_MISSING", 
+                            "type": step_types[step.id][output], 
                             "outputSource": step.id + "/" + output
                             } for output in step.out
                             ]
@@ -221,6 +236,14 @@ class WorkflowBuilder():
         self.workflow = Workflow(id,*args,**kwds, from_builder=True)
 
     def __call__(self) -> Any:
+        workflow = self.workflow
+        # TODO Need update to pydantic v2
+        # NOTE this is probably a temporary workaround, but 
+        # we need to be able to load the original cwl when creating subworkflows.
+        # path = urlparse(workflow.id).path
+        # with open(path, "w", encoding="utf-8") as file:
+        #     yaml = RootModel[Workflow](workflow).model_dump_json(indent=4)
+        #     file.write(dump(yaml))
         return self.workflow
 
     def step():
@@ -265,13 +288,15 @@ wf2_builder = WorkflowBuilder("wf3", steps=[step1, step2])
 wf3 = wf2_builder()
 print(wf3)
 
-step_builder3 = StepBuilder(wf3)
-step3 = step_builder3()
-print(step3)
+# step_builder3 = StepBuilder(wf3)
+# step3 = step_builder3()
+# print(step3)
 
-wf4_builder = WorkflowBuilder("wf4", steps = [step3])
-step4 = wf4_builder()
-print(step4)
+
+
+# wf4_builder = WorkflowBuilder("wf4", steps = [step3])
+# step4 = wf4_builder()
+# print(step4)
 
 
 
