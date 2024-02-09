@@ -195,18 +195,26 @@ class WorkflowBuilder():
 
 print(clt)
 
+# build a first step
 step_builder = CLTStepBuilder(clt)
 step1 = step_builder()
 print(step1)
 
+# load a second tool
 clt_file2 = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/wic/cwl_adapters/uppercase2_wic_compatible2.cwl")
 cwl_clt2 = cwl_parser.load_document_by_uri(clt_file2)
 yaml_clt2 = cwl_parser.save(cwl_clt2)
 clt2 = CommandLineTool(**yaml_clt2)
 
+# build our second step
 step_builder2 = CLTStepBuilder(clt2)
 step2 = step_builder2()
 print(step2)
 
-# builder = WorkflowBuilder("wf3")
-# wf3 = builder()
+echo_out_message_string = step1.out[0]
+uppercase_in_message = step2.in_[0]
+uppercase_in_message.source = echo_out_message_string
+
+builder = WorkflowBuilder("wf3", steps=[step1, step2])
+wf3 = builder()
+print(wf3)
