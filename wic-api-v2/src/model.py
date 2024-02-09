@@ -75,6 +75,7 @@ class CommandOutputParameter(OutputParameter):
 class WorkflowStepInput():
     id: str
     source: str
+    type: Optional[str] = "MISSING_TYPE"
 
 WorkflowStepOutput = NewType("WorkflowStepOutput", str)
 
@@ -173,7 +174,7 @@ class StepBuilder():
         # TODO REVIEW tentative
         id = "step_"+ Path(clt.id).stem
         run = clt.id
-        inputs = [{"id":input.id, "source":"UNSET"} for input in clt.inputs]
+        inputs = [{"id":input.id, "source":"UNSET", "type": input.type} for input in clt.inputs]
         outputs = [output.id for output in clt.outputs]
         self.step = WorkflowStep(id=id,run=run,in_=inputs,out=outputs, from_builder=True)
 
@@ -196,9 +197,15 @@ class WorkflowBuilder():
         inputs = []
         outputs = []
         for step in kwds.get("steps"):
-            step_inputs = [{"id": id + "/" + step.id + "/" + input.id, "type":"TYPE_MISSING"} for input in step.in_ if input.source is 'UNSET']
+            step_inputs = [{"id": id + "/" + step.id + "/" + input.id, "type":input.type} for input in step.in_ if input.source == 'UNSET']
             inputs = inputs + step_inputs
-            step_outputs = [{"id": id + "/" + step.id + "/" + output, "type": "TYPE_MISSING", "outputSource": step.id + "/" + output} for output in step.out]
+            step_outputs = [
+                            {
+                            "id": id + "/" + step.id + "/" + output,
+                            "type": "TYPE_MISSING", 
+                            "outputSource": step.id + "/" + output
+                            } for output in step.out
+                            ]
             outputs = outputs + step_outputs
 
         kwds.setdefault("inputs", inputs)
