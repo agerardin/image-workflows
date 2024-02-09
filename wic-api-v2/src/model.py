@@ -96,6 +96,7 @@ class WorkflowStep(BaseModel):
     run: str
     in_: list[WorkflowStepInput] = Field(..., alias='in')
     out: list[WorkflowStepOutput]
+    from_builder: Optional[bool] = False
 
 @dataclass
 class Workflow(Process):
@@ -103,6 +104,7 @@ class Workflow(Process):
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
     requirements: Optional[list[ProcessRequirement]] = None
+    from_builder: Optional[bool] = False
     class_: str = 'Workflow'
     # TODO maybe have transformation to store dict
     #inputs: dict[Id, WorkflowInputParameter]
@@ -169,11 +171,11 @@ class StepBuilder():
 
     def __init__(self, clt : Process):
         # TODO REVIEW tentative
-        id = Path(clt.id).stem
+        id = "step_"+ Path(clt.id).stem
         run = clt.id
         inputs = [{"id":input.id, "source":"UNSET"} for input in clt.inputs]
         outputs = [output.id for output in clt.outputs]
-        self.step = WorkflowStep(id=id,run=run,in_=inputs,out=outputs)
+        self.step = WorkflowStep(id=id,run=run,in_=inputs,out=outputs, from_builder=True)
 
     def __call__(self) -> WorkflowStep:
         return self.step
@@ -185,20 +187,24 @@ class WorkflowBuilder():
     """
     def __init__(self, id: str, *args: Any, **kwds: Any):
         kwds.setdefault("steps", [])
-        # collect all step inputs and create a workflow input for each
+        # collect all step inputs create a workflow input for each
         # collect all step outputs and create a workflow output for each
+        # NOTE for now each output from each step creates an output
+        # TODO make this optional
+        # TODO we could also reduced workflow outputs to only those 
+        # which are not already connected.
         inputs = []
         outputs = []
         for step in kwds.get("steps"):
-            step_inputs = [{"id": step.id + "/" + input.id, "type":"TYPE_MISSING"} for input in step.in_]
+            step_inputs = [{"id": id + "/" + step.id + "/" + input.id, "type":"TYPE_MISSING"} for input in step.in_ if input.source is 'UNSET']
             inputs = inputs + step_inputs
-            step_outputs = [{"id":step.id + "/" + output, "type": "TYPE_MISSING", "outputSource": step.id + "/" + output} for output in step.out]
+            step_outputs = [{"id": id + "/" + step.id + "/" + output, "type": "TYPE_MISSING", "outputSource": step.id + "/" + output} for output in step.out]
             outputs = outputs + step_outputs
 
         kwds.setdefault("inputs", inputs)
         kwds.setdefault("outputs", outputs)
 
-        self.workflow = Workflow(id,*args,**kwds)
+        self.workflow = Workflow(id,*args,**kwds, from_builder=True)
 
     def __call__(self) -> Any:
         return self.workflow
@@ -224,19 +230,34 @@ step_builder2 = StepBuilder(clt2)
 step2 = step_builder2()
 print(step2)
 
+# NOTE that is simulating the linking between 2 steps ios.
 echo_out_message_string = step1.out[0]
 uppercase_in_message = step2.in_[0]
-uppercase_in_message.source = echo_out_message_string
+uppercase_in_message.source = step1.id + "/" + echo_out_message_string
+
+echo_out_message_string = step1.out[0]
+uppercase_message_in_message = step2.in_[1]
+uppercase_message_in_message.source = step1.id + "/" + echo_out_message_string
+
+
+
+workflow_file= Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/workflow7.cwl")
+cwl_wf1 = cwl_parser.load_document_by_uri(workflow_file)
+yaml_wf1 = cwl_parser.save(cwl_wf1)
+wf1 = Workflow(**yaml_wf1)
+print(wf1)
 
 wf2_builder = WorkflowBuilder("wf3", steps=[step1, step2])
 wf3 = wf2_builder()
 print(wf3)
 
-step_builder3 = StepBuilder(wf3)
-step3 = step_builder3()
-print(step3)
+# step_builder3 = StepBuilder(wf3)
+# step3 = step_builder3()
+# print(step3)
 
-wf4_builder = WorkflowBuilder("wf4", steps = [step3, step2])
-step4 = wf4_builder()
-print(step4)
+# wf4_builder = WorkflowBuilder("wf4", steps = [step3, step2])
+# step4 = wf4_builder()
+# print(step4)
+
+
 
