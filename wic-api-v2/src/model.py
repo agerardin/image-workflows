@@ -46,36 +46,34 @@ class CommandOutputBinding:
     loadContents: Optional[bool]
     outputEval: Optional[str]
 
-@dataclass
-class Parameter:
+
+class Parameter(BaseModel):
     id: Id
     type: str
 
-@dataclass
 class InputParameter(Parameter):
     pass
 
 class OutputParameter(Parameter):
     pass
 
-@dataclass
+
 class WorkflowInputParameter(InputParameter):
     pass
-@dataclass
+
+
 class WorkflowOutputParameter(OutputParameter):
     outputSource: str
 
-@dataclass
 class CommandInputParameter(InputParameter):
     inputBinding: Optional[CommandLineBinding] = None
 
-@dataclass
+
 class CommandOutputParameter(OutputParameter):
     outputBinding: Optional[CommandOutputBinding] = None
 
 
-@dataclass
-class WorkflowStepInput():
+class WorkflowStepInput(BaseModel):
     id: str
     source: str
     type: Optional[str] = "MISSING_TYPE"
@@ -93,8 +91,7 @@ WorkflowStepOutput = NewType("WorkflowStepOutput", str)
 class WorkflowStep(BaseModel):
     # NOTE if using BaseModel rather than dataclass,
     # we need to use this approach.
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
     id: Id
     run: str
@@ -181,7 +178,13 @@ class StepBuilder():
         run = clt.id
         inputs = [{"id":input.id, "source":"UNSET", "type": input.type} for input in clt.inputs]
         outputs = [output.id for output in clt.outputs]
-        self.step = WorkflowStep(id=id,run=run,in_=inputs,out=outputs, from_builder=True)
+        self.step = WorkflowStep(
+            id = id,
+            run = run,
+            in_ = inputs,
+            out = outputs,
+            from_builder = True
+            )
 
     def __call__(self) -> WorkflowStep:
         return self.step
@@ -288,9 +291,9 @@ wf2_builder = WorkflowBuilder("wf3", steps=[step1, step2])
 wf3 = wf2_builder()
 print(wf3)
 
-# step_builder3 = StepBuilder(wf3)
-# step3 = step_builder3()
-# print(step3)
+step_builder3 = StepBuilder(wf3)
+step3 = step_builder3()
+print(step3)
 
 
 
