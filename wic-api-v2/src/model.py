@@ -1,5 +1,8 @@
 from typing import Union
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import (
+    BaseModel, ConfigDict, Field, ValidationError,
+    computed_field
+)
 import cwl_utils.parser as cwl_parser
 from pathlib import Path
 from yaml import safe_load, dump
@@ -123,6 +126,34 @@ class CommandLineTool(Process):
     doc: Optional[str] = ""
     label: Optional[str] = ""
 
+    @computed_field
+    @property
+    def name(self) -> str:
+        # TODO CHECK this works for any allowable CLT
+        name = Path(self.id).stem
+        return name
+    
+    def dump(self, path = Path()):
+        """
+        Create a clt file.
+        CommandLineTool computed name is ignored.
+
+        Args:
+            - path : the directories in which in to create the file.
+        """
+        path = path.resolve()
+        if not path.exists():
+            raise FileNotFoundError()
+        if not path.is_dir():
+            # TODO create exception for this?
+            # TODO fallback (like checking parent and using it?)
+            raise Exception(f"{path} is not a directory.")
+
+        file_path = path / (self.name + ".cwl")
+        serialized_clt = clt.model_dump(by_alias=True, exclude={'name'})
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(dump(serialized_clt))
+
 class ExpressionTool:
     pass
 
@@ -146,15 +177,7 @@ except ValidationError as e:
     print(e.errors())
 
 clt = CommandLineTool(**yaml_clt)
-path = Path() / "serialized_clt.cwl"
-serialized_clt = clt.model_dump(by_alias=True)
-print(dump(serialized_clt))
-with open(path, "w", encoding="utf-8") as file:
-    file.write(dump(serialized_clt))
-
-
-print(serialized_clt)
-
+clt.dump()
 
 # workflow_file= Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/workflow5.cwl")
 # cwl_wf1 = cwl_parser.load_document_by_uri(workflow_file)
