@@ -99,13 +99,43 @@ class WorkflowStep(BaseModel):
 class Process(BaseModel):
     id: Id
 
+    @computed_field
+    @property
+    def name(self) -> str:
+        # TODO CHECK this works for any allowable CLT
+        name = Path(self.id).stem
+        return name
+    
+    def dump(self, path = Path()) -> Path:
+        """
+        Create a cwl file.
+        Process computed name is ignored.
+
+        Args:
+            - path : the directories in which in to create the file.
+        """
+        path = path.resolve()
+        if not path.exists():
+            raise FileNotFoundError()
+        if not path.is_dir():
+            # TODO create exception for this?
+            # TODO fallback (like checking parent and using it?)
+            raise Exception(f"{path} is not a directory.")
+
+        file_path = path / (self.name + ".cwl")
+        serialized_process = self.model_dump(by_alias=True, exclude={'name'})
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(dump(serialized_process))
+            return file_path 
+
 class Workflow(Process):
     inputs: list[WorkflowInputParameter]
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
     requirements: Optional[list[ProcessRequirement]] = None
     from_builder: Optional[bool] = False
-    class_: str = 'Workflow'
+    # TODO CHECK if we can factor in process
+    class_: Optional[str] = Field(..., alias='class')
     cwlVersion: str = "v1.2"
     # TODO maybe have transformation to store dict
     #inputs: dict[Id, WorkflowInputParameter]
@@ -125,34 +155,6 @@ class CommandLineTool(Process):
     stdout: Optional[str] = None
     doc: Optional[str] = ""
     label: Optional[str] = ""
-
-    @computed_field
-    @property
-    def name(self) -> str:
-        # TODO CHECK this works for any allowable CLT
-        name = Path(self.id).stem
-        return name
-    
-    def dump(self, path = Path()):
-        """
-        Create a clt file.
-        CommandLineTool computed name is ignored.
-
-        Args:
-            - path : the directories in which in to create the file.
-        """
-        path = path.resolve()
-        if not path.exists():
-            raise FileNotFoundError()
-        if not path.is_dir():
-            # TODO create exception for this?
-            # TODO fallback (like checking parent and using it?)
-            raise Exception(f"{path} is not a directory.")
-
-        file_path = path / (self.name + ".cwl")
-        serialized_clt = clt.model_dump(by_alias=True, exclude={'name'})
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(dump(serialized_clt))
 
 class ExpressionTool:
     pass
@@ -177,19 +179,22 @@ except ValidationError as e:
     print(e.errors())
 
 clt = CommandLineTool(**yaml_clt)
-clt.dump()
+clt_out = clt.dump()
+print(clt_out)
 
-# workflow_file= Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/workflow5.cwl")
-# cwl_wf1 = cwl_parser.load_document_by_uri(workflow_file)
-# yaml_wf1 = cwl_parser.save(cwl_wf1)
-# wf1 = Workflow(**yaml_wf1)
-# print(wf1)
+workflow_file= Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/workflow5.cwl")
+cwl_wf1 = cwl_parser.load_document_by_uri(workflow_file)
+yaml_wf1 = cwl_parser.save(cwl_wf1)
+wf1 = Workflow(**yaml_wf1)
+print(wf1)
+wf1_out = wf1.dump()
+print(wf1_out)
 
-# subworkflow_file = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/subworkflow1.cwl")
-# cwl_wf2 = cwl_parser.load_document_by_uri(subworkflow_file)
-# yaml_wf2 = cwl_parser.save(cwl_wf2)
-# wf2 = Workflow(**yaml_wf2)
-# print(wf2)
+subworkflow_file = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/subworkflow1.cwl")
+cwl_wf2 = cwl_parser.load_document_by_uri(subworkflow_file)
+yaml_wf2 = cwl_parser.save(cwl_wf2)
+wf2 = Workflow(**yaml_wf2)
+print(wf2)
 
 # class StepBuilder():
 #     """Builder for a step object.
@@ -219,7 +224,7 @@ clt.dump()
 #     def __call__(self) -> WorkflowStep:
 #         return self.step
 
-# class WorkflowBuilder():
+# class  WorkflowBuilder():
 #     """Builder for a workflow object.
     
 #     Enable iteratively to create a workflow.
@@ -264,9 +269,10 @@ clt.dump()
 
 #         # NOTE for this to work, we would need to serialize to disk
 #         # TODO CHECK if there is a better way to solve this
-#         id = (Path() / id).resolve().as_uri()
+#         id = (Path() / (id + ".cwl")).resolve().as_uri()
+#         kwds.setdefault("id", id)
 
-#         self.workflow = Workflow(id,*args,**kwds, from_builder=True)
+#         self.workflow = Workflow(**kwds, from_builder=True)
 
 #     def __call__(self) -> Any:
 #         workflow = self.workflow
@@ -274,10 +280,7 @@ clt.dump()
 #         # we need to be able to load the original cwl when creating subworkflows.
 #         # TODO IMPLEMENT we could also accept a context object containing models of 
 #         # clts and workflows.
-#         path = urlparse(workflow.id).path
-        # serialized = workflow.model_dump_json()
-        # with open(path, "w", encoding="utf-8") as file:
-        #     file.write(serialized)
+#         self.workflow.dump()
 #         return self.workflow
 
 #     def step():
@@ -328,9 +331,9 @@ clt.dump()
 
 
 
-# # wf4_builder = WorkflowBuilder("wf4", steps = [step3])
-# # step4 = wf4_builder()
-# # print(step4)
+# wf4_builder = WorkflowBuilder("wf4", steps = [step3])
+# step4 = wf4_builder()
+# print(step4)
 
 
 
