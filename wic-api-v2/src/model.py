@@ -90,7 +90,7 @@ class WorkflowStepInput(BaseModel):
     # TODO CHECK. WorkflowStepInput does not have type.
     # However, when building by hand, we will rely on this to check
     # the link is valid, without having to go back to the clt definition.
-    type: Optional[str] = "MISSING_TYPE"
+    type: Optional[str] = Field("MISSING_TYPE", exclude=True)
 
 WorkflowStepOutput = NewType("WorkflowStepOutput", str)
 
@@ -156,7 +156,7 @@ class Workflow(Process):
     inputs: list[WorkflowInputParameter]
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
-    requirements: Optional[list[ProcessRequirement]] = None
+    requirements: Optional[list[ProcessRequirement]] = []
     from_builder: Optional[bool] = False
     # TODO CHECK if we can factor in process
     class_: Optional[str] = Field(alias='class', default='Workflow')
@@ -255,40 +255,56 @@ class  WorkflowBuilder():
         # of workflow inputs.
         # TODO connect all steps inputs to their corresponding workflow inputs
         # using the source attribute.
-        inputs = []
-        outputs = []
+        def generate_workflow_io_id(worklflow_id : str, step_id: str, io_id: str):
+            return worklflow_id + "___" + step_id + "___" + io_id
+
+        workflow_inputs = []
+        worklfow_inputs = []
         for step in kwds.get("steps"):
-            step_inputs = [
-                {"id": id + "/" + step.id + "/" + input.id,
-                 "type":input.type}
-                   for input in step.in_ 
-                   if input.source == 'UNSET'
-                   ]
-            inputs = inputs + step_inputs
+            for input in step.in_:
+                if input.source == 'UNSET':
+                    workflow_input_id = generate_workflow_io_id(id, step.id, input.id)
+                    workflow_input = {"id": workflow_input_id, "type":input.type}
+                    input.source = workflow_input_id
+                    workflow_inputs.append(workflow_input)
 
+            # step_inputs = [
+            #     {"id": generate_workflow_io_id(id, step.id, input.id),
+            #      "type":input.type}
+            #        for input in step.in_ 
+            #        if input.source == 'UNSET' # exclude linked steps.
+            #        ]
+            # workflow_inputs = workflow_inputs + step_inputs # collect all step inputs.
+
+            # TODO That is where a context of loaded CLTs could be helpful.
+            # So we don't keep reloading the same models.
+
+            # Collect types of each CLT inputs referenced.
+            # TODO probably should do it anyhow because we could parse
+            # non generated steps.
+            # Check that generated steps have correct input types?
             step_types = {}
-
-            print(f"run {step.run}")
             cwl_file = cwl_parser.load_document_by_uri(step.run)
             yaml_cwl = cwl_parser.save(cwl_file)
             if cwl_file.class_ == "CommandLineTool":
                 clt = CommandLineTool(**yaml_cwl)
                 output_types = {output.id:output.type for output in clt.outputs}
-                step_types[step.id]= output_types
+                step_types[step.id] = output_types
 
-            #TODO IMPLEMENT same thing for workflow (need to recursive load types)
+            #TODO IMPLEMENT same thing for workflow (need to recursively load types)
 
             step_outputs = [
                             {
-                            "id": id + "/" + step.id + "/" + output,
+                            "id": generate_workflow_io_id(id, step.id, output),
                             "type": step_types[step.id][output], 
                             "outputSource": step.id + "/" + output
                             } for output in step.out
                             ]
-            outputs = outputs + step_outputs
+            # For now, every step output becomes a workflow output.
+            worklfow_inputs = worklfow_inputs + step_outputs
 
-        kwds.setdefault("inputs", inputs)
-        kwds.setdefault("outputs", outputs)
+        kwds.setdefault("inputs", workflow_inputs)
+        kwds.setdefault("outputs", worklfow_inputs)
 
         # NOTE for this to work, we would need to serialize to disk
         # TODO CHECK if there is a better way to solve this
