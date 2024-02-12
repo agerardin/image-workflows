@@ -105,24 +105,20 @@ class WorkflowStepInput(BaseModel):
     source: str
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
-    # TODO CHECK. WorkflowStepInput does not have type.
-    # However, when building by hand, we will rely on this to check
-    # the link is valid, without having to go back to the clt definition.
-    type: Optional[str] = Field("MISSING_TYPE", exclude=True)
+    type: str = Field(exclude=True)
     value: None
 
 class WorkflowStepOutput(BaseModel):
     id: str
-
-class AssignableWorkflowStepOutput(WorkflowStepOutput):
-    type: str = None
-    value: str = None
 
 def convert_to_string(value: Any, handler) -> str:
     return value.id
 
 WorkflowStepOutputId = Annotated[WorkflowStepOutput, WrapSerializer(convert_to_string)]
 
+class AssignableWorkflowStepOutput(WorkflowStepOutput):
+    type: str = Field(exclude=True)
+    value: str = None
 
 WorkflowStepId = Annotated[str,[]]
 
@@ -145,8 +141,8 @@ class WorkflowStep(BaseModel):
         return res
 
     def set_mutable_ios(self, inputs: dict[ParameterId, InputParameter], outputs: dict[ParameterId, OutputParameter]):
-        # TODO maybe create a subclass that is mutable or set a attribute
-        # CHECK pydantic
+        # TODO CHECK For now recreate assignable model.
+        # Let's make sure it is the best solution.
         assignable_ins = []
         for step_in in self.in_:
             process_input = inputs[step_in.id]
@@ -172,7 +168,7 @@ class Process(BaseModel):
     
     id: ProcessId
 
-    # TODO can class be declared there and overidden in subclasses?
+    # TODO can class attribute be declared there and overidden in subclasses?
 
     @computed_field
     @property
