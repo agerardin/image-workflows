@@ -6,6 +6,7 @@ from pydantic import (
 import cwl_utils.parser as cwl_parser
 from pathlib import Path
 from yaml import safe_load, dump
+import yaml
 from pydantic.dataclasses import dataclass
 from typing import NewType, Optional, Any
 from rich import print
@@ -13,6 +14,19 @@ from urllib.parse import unquote, urlparse
 # TODO update to v2 if we want to go this route
 # RootModel us used to serialize dataclasses
 # from pydantic import RootModel
+
+def validate_file(file_path):
+    file_path = file_path.resolve()
+    if not file_path.exists:
+        raise FileNotFoundError
+    if not file_path.is_file():
+        raise NotAFileError()
+    return file_path
+
+
+class NotAFileError(Exception):
+    pass
+
 
 Id = NewType("Id", str)
 
@@ -106,7 +120,7 @@ class Process(BaseModel):
         name = Path(self.id).stem
         return name
     
-    def dump(self, path = Path()) -> Path:
+    def save(self, path = Path()) -> Path:
         """
         Create a cwl file.
         Process computed name is ignored.
@@ -141,6 +155,17 @@ class Workflow(Process):
     #inputs: dict[Id, WorkflowInputParameter]
     #outputs: dict[Id, WorkflowOutputParameter]
 
+    @classmethod
+    def load(cls, clt_file: Path) -> 'CommandLineTool':
+        """Load a Workflow from a cwl workflow file.
+        
+        We use the reference cwl parser to get a standardized description.
+        """
+        clt_file = validate_file(clt_file)
+        cwl_clt = cwl_parser.load_document_by_uri(clt_file)
+        yaml_clt = cwl_parser.save(cwl_clt)
+        return cls(**yaml_clt) 
+
 class CommandLineTool(Process):
     model_config = ConfigDict(extra='ignore')
     baseCommand: str
@@ -156,6 +181,17 @@ class CommandLineTool(Process):
     doc: Optional[str] = ""
     label: Optional[str] = ""
 
+    @classmethod
+    def load(cls, clt_file: Path) -> 'CommandLineTool':
+        """Load a CLT from a cwl clt file.
+        
+        We use the reference cwl parser to get a standardized description.
+        """
+        clt_file = validate_file(clt_file)
+        cwl_clt = cwl_parser.load_document_by_uri(clt_file)
+        yaml_clt = cwl_parser.save(cwl_clt)
+        return cls(**yaml_clt) 
+
 class ExpressionTool:
     pass
 
@@ -163,38 +199,19 @@ class Operation:
     pass
 
 
-cwl_file = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/echo_string.cwl")
+# workflow_file= Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/workflow5.cwl")
+# cwl_wf1 = cwl_parser.load_document_by_uri(workflow_file)
+# yaml_wf1 = cwl_parser.save(cwl_wf1)
+# wf1 = Workflow(**yaml_wf1)
+# print(wf1)
+# wf1_out = wf1.dump()
+# print(wf1_out)
 
-with cwl_file.open("r", encoding="utf-8") as file:
-    raw_clt = safe_load(file)
-
-# NOTE we use the cwl_parser to standardize the representation
-cwl_clt = cwl_parser.load_document_by_uri(cwl_file)
-yaml_clt = cwl_parser.save(cwl_clt)
-
-try:
-    clt = CommandLineTool(**yaml_clt) 
-    print(clt)
-except ValidationError as e:
-    print(e.errors())
-
-clt = CommandLineTool(**yaml_clt)
-clt_out = clt.dump()
-print(clt_out)
-
-workflow_file= Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/workflow5.cwl")
-cwl_wf1 = cwl_parser.load_document_by_uri(workflow_file)
-yaml_wf1 = cwl_parser.save(cwl_wf1)
-wf1 = Workflow(**yaml_wf1)
-print(wf1)
-wf1_out = wf1.dump()
-print(wf1_out)
-
-subworkflow_file = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/subworkflow1.cwl")
-cwl_wf2 = cwl_parser.load_document_by_uri(subworkflow_file)
-yaml_wf2 = cwl_parser.save(cwl_wf2)
-wf2 = Workflow(**yaml_wf2)
-print(wf2)
+# subworkflow_file = Path("/Users/antoinegerardin/Documents/projects/polus-pipelines/wic-api-v2/tests/test-data/cwl/subworkflow1.cwl")
+# cwl_wf2 = cwl_parser.load_document_by_uri(subworkflow_file)
+# yaml_wf2 = cwl_parser.save(cwl_wf2)
+# wf2 = Workflow(**yaml_wf2)
+# print(wf2)
 
 # class StepBuilder():
 #     """Builder for a step object.
@@ -334,6 +351,4 @@ print(wf2)
 # wf4_builder = WorkflowBuilder("wf4", steps = [step3])
 # step4 = wf4_builder()
 # print(step4)
-
-
 
