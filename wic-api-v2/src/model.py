@@ -1,9 +1,9 @@
 from typing import Annotated, Union
 from pydantic import (
     BaseModel, ConfigDict, Field, PrivateAttr, ValidationError,
-    computed_field
+    computed_field, validator
 )
-from pydantic.functional_validators import AfterValidator
+from pydantic.functional_validators import AfterValidator, field_validator
 import cwl_utils.parser as cwl_parser
 from pathlib import Path
 from yaml import safe_load, dump
@@ -29,13 +29,15 @@ class NotAFileError(Exception):
     pass
 
 def validProcessId(id):
-    try:
-        path = Path(unquote(urlparse(id).path))
-        path = validate_file(path)
-    except Exception:
-        print(id)
-        raise Exception
-    assert path.suffix == ".cwl"
+    # TODO need to figure out how to deal with from_builder=True
+    # where file is not yet created.
+    # try:
+    #     path = Path(unquote(urlparse(id).path))
+    #     path = validate_file(path)
+    # except Exception:
+    #     print(id)
+    #     raise Exception
+    # assert path.suffix == ".cwl"
     return id
     
 
@@ -71,10 +73,9 @@ class CommandOutputBinding(BaseModel):
     loadContents: Optional[bool] = None
     outputEval: Optional[str] = None
 
-
+ParameterId = Annotated[str,[]]
 class Parameter(BaseModel):
-    
-    id:str
+    id: ParameterId
     type: str
 
 class InputParameter(Parameter):
@@ -174,9 +175,16 @@ class Workflow(Process):
     # TODO CHECK if we can factor in process
     class_: Optional[str] = Field(alias='class', default='Workflow')
     cwlVersion: str = "v1.2"
-    # TODO maybe have transformation to store dict
-    #inputs: dict[Id, WorkflowInputParameter]
-    #outputs: dict[Id, WorkflowOutputParameter]
+
+    # TODO CHECK should factor that too
+    @property
+    def _inputs(self) -> dict[ParameterId, WorkflowInputParameter]:
+        return {input.id: input for input in self.inputs}
+
+    # TODO CHECK should factor that too
+    @property
+    def _outputs(self) -> dict[ParameterId, WorkflowOutputParameter]:
+        return {output.id: output for output in self.outputs}
 
     @classmethod
     def load(cls, clt_file: Path) -> 'CommandLineTool':
@@ -198,18 +206,19 @@ class CommandLineTool(Process):
     baseCommand: str
     inputs: list[CommandInputParameter]
     outputs: list[CommandOutputParameter]
-    # TODO maybe have transformation to store dict
-    # but only if we don't need ordering
-    #inputs: dict[Id, CommandInputParameter]
-    #outputs: dict[Id, CommandOutputParameter]
     class_: Optional[str] = Field(..., alias='class') 
     cwlVersion: Optional[str] = "v1.2"
     stdout: Optional[str] = None
     doc: Optional[str] = ""
     label: Optional[str] = ""
 
-    _inputs: dict[str, CommandInputParameter] = PrivateAttr(default= {})
+    @property
+    def _inputs(self) -> dict[ParameterId, CommandInputParameter]:
+        return {input.id: input for input in self.inputs}
 
+    @property
+    def _outputs(self) -> dict[ParameterId, CommandOutputParameter]:
+        return {output.id: output for output in self.outputs}
 
 
     @classmethod
@@ -275,7 +284,7 @@ class  WorkflowBuilder():
             return worklflow_id + "___" + step_id + "___" + io_id
 
         workflow_inputs = []
-        worklfow_inputs = []
+        worklfow_outputs = []
         for step in kwds.get("steps"):
             for input in step.in_:
                 if input.source == 'UNSET':
@@ -296,12 +305,10 @@ class  WorkflowBuilder():
             yaml_cwl = cwl_parser.save(cwl_file)
             if cwl_file.class_ == "CommandLineTool":
                 clt = CommandLineTool(**yaml_cwl)
-                output_types = {output.id:output.type for output in clt.outputs}
-                step_types[step.id] = output_types
+                step_types[step.id] = clt._outputs
             elif cwl_file.class_ == "Workflow":
                 workflow = Workflow(**yaml_cwl)
-                output_types = {output.id:output.type for output in workflow.outputs}
-                step_types[step.id] = output_types
+                step_types[step.id] = workflow._outputs
                 kwds.setdefault("requirements", [{"class": "SubworkflowFeatureRequirement"}])
             else:
                 raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
@@ -309,15 +316,15 @@ class  WorkflowBuilder():
             step_outputs = [
                             {
                             "id": generate_workflow_io_id(id, step.id, output),
-                            "type": step_types[step.id][output], 
+                            "type": step_types[step.id][output].type, 
                             "outputSource": step.id + "/" + output
                             } for output in step.out
                             ]
             # For now, every step output becomes a workflow output.
-            worklfow_inputs = worklfow_inputs + step_outputs
+            worklfow_outputs = worklfow_outputs + step_outputs
 
         kwds.setdefault("inputs", workflow_inputs)
-        kwds.setdefault("outputs", worklfow_inputs)
+        kwds.setdefault("outputs", worklfow_outputs)
 
         # NOTE for this to work, we would need to serialize to disk
         # TODO CHECK if there is a better way to solve this
