@@ -101,19 +101,30 @@ uppercase_message_in_message.source = step1.id + "/" + echo_out_message_string
 print(step1)
 print(step2)
 
+wf3_builder = WorkflowBuilder("wf3", steps=[step1, step2])
+wf3 = wf3_builder()
+print(wf3)
+
 workflow_file2= Path("tests/workflow7.cwl")
 wf2 = Workflow.load(workflow_file2)
 wf2.save()
 print(wf2)
 
-wf3_builder = WorkflowBuilder("wf3", steps=[step1, step2])
-wf3 = wf3_builder()
-print(wf3)
-
 step_builder3 = StepBuilder(wf3)
 step3 = step_builder3()
 print(step3)
 
-wf4_builder = WorkflowBuilder("wf4", steps = [step3])
+touch_file = Path("tests/touch_single.cwl")
+touch = CommandLineTool.load(touch_file)
+print(touch)
+step_builder_touch = StepBuilder(touch)
+touch_step = step_builder_touch()
+
+echo_out_message_string = step3.out[1]
+touch_touchfiles = touch_step.in_[0]
+touch_touchfiles.source = step3.id + "/" + echo_out_message_string
+
+wf4_builder = WorkflowBuilder("wf4", steps = [step3, touch_step])
 step4 = wf4_builder()
 print(step4)
+

@@ -54,9 +54,9 @@ class CommandLineBinding(InputBinding, extra='ignore'):
 # but should be CLTOutputBinding
 
 class CommandOutputBinding(BaseModel):
-    glob: Optional[str]
-    loadContents: Optional[bool]
-    outputEval: Optional[str]
+    glob: Optional[str] = None
+    loadContents: Optional[bool] = None
+    outputEval: Optional[str] = None
 
 
 class Parameter(BaseModel):
