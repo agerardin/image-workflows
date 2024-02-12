@@ -1,8 +1,9 @@
-from typing import Union
+from typing import Annotated, Union
 from pydantic import (
-    BaseModel, ConfigDict, Field, ValidationError,
+    BaseModel, ConfigDict, Field, PrivateAttr, ValidationError,
     computed_field
 )
+from pydantic.functional_validators import AfterValidator
 import cwl_utils.parser as cwl_parser
 from pathlib import Path
 from yaml import safe_load, dump
@@ -15,9 +16,9 @@ from urllib.parse import unquote, urlparse
 # RootModel us used to serialize dataclasses
 # from pydantic import RootModel
 
-def validate_file(file_path):
+def validate_file(file_path : Path):
     file_path = file_path.resolve()
-    if not file_path.exists:
+    if not file_path.exists():
         raise FileNotFoundError
     if not file_path.is_file():
         raise NotAFileError()
@@ -27,8 +28,20 @@ def validate_file(file_path):
 class NotAFileError(Exception):
     pass
 
+def validProcessId(id):
+    try:
+        path = Path(unquote(urlparse(id).path))
+        path = validate_file(path)
+    except Exception:
+        print(id)
+        raise Exception
+    assert path.suffix == ".cwl"
+    return id
+    
 
-Id = NewType("Id", str)
+ProcessId = Annotated[str, AfterValidator(validProcessId)]
+
+# Id = NewType("Id", str)
 
 class ProcessRequirement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -60,7 +73,8 @@ class CommandOutputBinding(BaseModel):
 
 
 class Parameter(BaseModel):
-    id: Id
+    
+    id:str
     type: str
 
 class InputParameter(Parameter):
@@ -84,28 +98,25 @@ class CommandInputParameter(InputParameter):
 class CommandOutputParameter(OutputParameter):
     outputBinding: Optional[CommandOutputBinding] = None
 
+StepInputId = Annotated[str,[]]
 class WorkflowStepInput(BaseModel):
-    id: str
+
+    id: StepInputId
     source: str
     # TODO CHECK. WorkflowStepInput does not have type.
     # However, when building by hand, we will rely on this to check
     # the link is valid, without having to go back to the clt definition.
     type: Optional[str] = Field("MISSING_TYPE", exclude=True)
 
-WorkflowStepOutput = NewType("WorkflowStepOutput", str)
+WorkflowStepOutput = Annotated[str,[]]
 
-# TODO CHECK this does not work.
-# Revisit and see if we can declared a type
-# that serialize to string instead
-# This could be useful when adding custom logic.
-# @dataclass
-# class WorkflowStepOutput(str):
-#     pass
+
+WorkflowStepId = Annotated[str,[]]
 
 class WorkflowStep(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    id: Id
+    id: WorkflowStepId
     run: str
     in_: list[WorkflowStepInput] = Field(..., alias='in')
     out: list[WorkflowStepOutput]
@@ -118,7 +129,7 @@ class WorkflowStep(BaseModel):
 class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
-    id: Id
+    id: ProcessId
 
     # TODO can class be declared there and overidden in subclasses?
 
@@ -196,6 +207,10 @@ class CommandLineTool(Process):
     stdout: Optional[str] = None
     doc: Optional[str] = ""
     label: Optional[str] = ""
+
+    _inputs: dict[str, CommandInputParameter] = PrivateAttr(default= {})
+
+
 
     @classmethod
     def load(cls, clt_file: Path) -> 'CommandLineTool':
