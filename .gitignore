@@ -34,3 +34,11 @@ wic-api-v2/**/*.gv
 wic-api-v2/**/*.png
 outdir
 
+
+# temp for poc
+wf3.cwl
+workflow7.cwl
+echo_string.cwl
+subworkflow1.cwl
+wf4.cwl
+*back.cwl

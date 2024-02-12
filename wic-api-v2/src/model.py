@@ -163,7 +163,7 @@ class WorkflowStep(BaseModel):
         for step_out in self.out:
             process_output = outputs[step_out.id]
             values = step_out.model_dump()
-            assignable_out = AssignableWorkflowStepOutput(**values, value="", type=process_output.type)
+            assignable_out = AssignableWorkflowStepOutput(**values, type=process_output.type)
             assignable_outs.append(assignable_out)
         self.out = assignable_outs
 
