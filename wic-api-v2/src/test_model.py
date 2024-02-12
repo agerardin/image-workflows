@@ -1,7 +1,10 @@
 import yaml
 from pathlib import Path
 import cwl_utils.parser as cwl_parser
-from model import CommandLineTool
+from model import (
+    CommandLineTool, Workflow,
+    StepBuilder, WorkflowBuilder
+)
 import logging
 from rich import print
 import filecmp
@@ -50,5 +53,58 @@ def test_cwl():
 
 test_cwl()
 
-echo_string_file = Path("tests/echo_string.cwl")
-echo_string = CommandLineTool.load(echo_string_file)
+workflow_file= Path("tests/workflow5.cwl")
+wf1 = Workflow.load(workflow_file)
+print(wf1)
+
+subworkflow_file = Path("tests/subworkflow1.cwl")
+wf2 = Workflow.load(subworkflow_file)
+print(wf2)
+
+# TODO So cwlparser does not check the referenced clts,
+# It justs check the definition is valid at the first level.
+# So we will need to pull all references first.
+# For that, provide a Context object so we parse clts over and over.
+
+
+# load a clt
+echo_file = Path("tests/echo_string.cwl")
+echo = CommandLineTool.load(echo_file)
+print(echo)
+
+# build a first step
+step_builder = StepBuilder(echo)
+step1 = step_builder()
+print(step1)
+
+# load a second clt
+uppercase_file = Path("tests/uppercase2_wic_compatible2.cwl")
+uppercase = CommandLineTool.load(uppercase_file)
+print(uppercase)
+
+# build our second step
+step_builder2 = StepBuilder(uppercase)
+step2 = step_builder2()
+print(step2)
+
+
+# NOTE that is simulating the linking between 2 steps ios.
+echo_out_message_string = step1.out[0]
+uppercase_in_message = step2.in_[0]
+uppercase_in_message.source = step1.id + "/" + echo_out_message_string
+
+echo_out_message_string = step1.out[0]
+uppercase_message_in_message = step2.in_[1]
+uppercase_message_in_message.source = step1.id + "/" + echo_out_message_string
+
+print(step1)
+print(step2)
+
+workflow_file2= Path("tests/workflow7.cwl")
+wf2 = Workflow.load(workflow_file2)
+wf2.save()
+print(wf2)
+
+wf3_builder = WorkflowBuilder("wf3", steps=[step1, step2])
+wf3 = wf3_builder()
+print(wf3)
