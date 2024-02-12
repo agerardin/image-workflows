@@ -90,11 +90,11 @@ print(step2)
 
 
 # NOTE that is simulating the linking between 2 steps ios.
-echo_out_message_string = step1.out[0]
+echo_out_message_string = step1.out[0].id
 uppercase_in_message = step2.in_[0]
 uppercase_in_message.source = step1.id + "/" + echo_out_message_string
 
-echo_out_message_string = step1.out[0]
+echo_out_message_string = step1.out[0].id
 uppercase_message_in_message = step2.in_[1]
 uppercase_message_in_message.source = step1.id + "/" + echo_out_message_string
 
@@ -120,11 +120,14 @@ print(touch)
 step_builder_touch = StepBuilder(touch)
 touch_step = step_builder_touch()
 
-echo_out_message_string = step3.out[1]
+echo_out_message_string = step3.out[1].id
 touch_touchfiles = touch_step.in_[0]
 touch_touchfiles.source = step3.id + "/" + echo_out_message_string
 
 wf4_builder = WorkflowBuilder("wf4", steps = [step3, touch_step])
 step4 = wf4_builder()
+
+print("--------------")
+
 print(step4)
 

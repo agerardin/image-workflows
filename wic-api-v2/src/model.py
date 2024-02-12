@@ -1,7 +1,7 @@
 from typing import Annotated, Union
 from pydantic import (
     BaseModel, ConfigDict, Field, PrivateAttr, ValidationError,
-    computed_field, validator
+    computed_field, validator, WrapSerializer
 )
 from pydantic.functional_validators import AfterValidator, field_validator
 import cwl_utils.parser as cwl_parser
@@ -23,7 +23,6 @@ def validate_file(file_path : Path):
     if not file_path.is_file():
         raise NotAFileError()
     return file_path
-
 
 class NotAFileError(Exception):
     pass
@@ -104,12 +103,25 @@ class WorkflowStepInput(BaseModel):
 
     id: StepInputId
     source: str
+
+class AssignableWorkflowStepInput(WorkflowStepInput):
     # TODO CHECK. WorkflowStepInput does not have type.
     # However, when building by hand, we will rely on this to check
     # the link is valid, without having to go back to the clt definition.
     type: Optional[str] = Field("MISSING_TYPE", exclude=True)
+    value: None
 
-WorkflowStepOutput = Annotated[str,[]]
+class WorkflowStepOutput(BaseModel):
+    id: str
+
+class AssignableWorkflowStepOutput(WorkflowStepOutput):
+    type: str = None
+    value: str = None
+
+def convert_to_string(value: Any, handler) -> str:
+    return value.id
+
+WorkflowStepOutputId = Annotated[WorkflowStepOutput, WrapSerializer(convert_to_string)]
 
 
 WorkflowStepId = Annotated[str,[]]
@@ -120,12 +132,40 @@ class WorkflowStep(BaseModel):
     id: WorkflowStepId
     run: str
     in_: list[WorkflowStepInput] = Field(..., alias='in')
-    out: list[WorkflowStepOutput]
+    out: list[WorkflowStepOutputId]
     from_builder: Optional[bool] = Field(False, exclude=True)
 
-    # TODO CHECK we could also keep track of a dictionary of clt
-    # names for checking WorkflowStepInput type. Let's see what
-    # makes more sense.
+
+    @field_validator("out", mode="before")
+    # type: ignore
+    @classmethod
+    def transform_workflow_step_output(cls, out) -> Any:  # pylint: disable=no-self-argument
+        """Return name of input from InputParameter.id."""
+        res = [{"id": wf_step_output} for wf_step_output in out]
+        return res
+
+    def set_mutable_ios(self, inputs: dict[ParameterId, InputParameter], outputs: dict[ParameterId, OutputParameter]):
+        # TODO maybe create a subclass that is mutable or set a attribute
+        # CHECK pydantic
+        assignable_ins = []
+        for step_in in self.in_:
+            process_input = inputs[step_in.id]
+            values = step_in.model_dump()
+            assignable_in = AssignableWorkflowStepInput(
+                **values,
+                value=None,
+                type=process_input.type
+                )
+            assignable_ins.append(assignable_in)
+        self.in_ = assignable_ins
+
+        assignable_outs = []
+        for step_out in self.out:
+            process_output = outputs[step_out.id]
+            values = step_out.model_dump()
+            assignable_out = AssignableWorkflowStepOutput(**values, value="", type=process_output.type)
+            assignable_outs.append(assignable_out)
+        self.out = assignable_outs
 
 class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -187,7 +227,7 @@ class Workflow(Process):
         return {output.id: output for output in self.outputs}
 
     @classmethod
-    def load(cls, clt_file: Path) -> 'CommandLineTool':
+    def load(cls, clt_file: Path) -> 'Workflow':
         """Load a Workflow from a cwl workflow file.
         
         We use the reference cwl parser to get a standardized description.
@@ -245,21 +285,22 @@ class StepBuilder():
     For each input/output of the clt, a corresponding step in/out is created.
     """
 
-    def __init__(self, clt : Process):
+    def __init__(self, process : Process):
         # Generate a step id from the clt name
-        id = "step_"+ clt.name
-        run = clt.id
+        id = "step_"+ process.name
+        run = process.id
         # TODO change. For now set source to "UNSET"
         inputs = [{"id":input.id, "source":"UNSET", "type": input.type}
-                  for input in clt.inputs]
-        outputs = [output.id for output in clt.outputs]
+                  for input in process.inputs]
+        outputs = [output.id for output in process.outputs]
         self.step = WorkflowStep(
             id = id,
             run = run,
             in_ = inputs,
             out = outputs,
-            from_builder = True
+            from_builder = True,
             )
+        self.step.set_mutable_ios(process._inputs, process._outputs)
 
     def __call__(self) -> WorkflowStep:
         return self.step
@@ -313,11 +354,13 @@ class  WorkflowBuilder():
             else:
                 raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
 
+            # TODO do not hand generate outputSource but create a method to 
+            # encapsulate this
             step_outputs = [
                             {
-                            "id": generate_workflow_io_id(id, step.id, output),
-                            "type": step_types[step.id][output].type, 
-                            "outputSource": step.id + "/" + output
+                            "id": generate_workflow_io_id(id, step.id, output.id),
+                            "type": step_types[step.id][output.id].type, 
+                            "outputSource": step.id + "/" + output.id
                             } for output in step.out
                             ]
             # For now, every step output becomes a workflow output.
@@ -334,7 +377,6 @@ class  WorkflowBuilder():
         self.workflow = Workflow(**kwds, from_builder=True)
 
     def __call__(self) -> Any:
-        workflow = self.workflow
         # NOTE this is probably a temporary workaround, but 
         # we need to be able to load the original cwl when creating subworkflows.
         # TODO IMPLEMENT we could also accept a context object containing models of 
