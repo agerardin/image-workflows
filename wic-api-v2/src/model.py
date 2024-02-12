@@ -31,10 +31,10 @@ class NotAFileError(Exception):
 Id = NewType("Id", str)
 
 class ProcessRequirement(BaseModel):
-    class_: str = Field(..., alias='class')   
+    model_config = ConfigDict(populate_by_name=True)
 
 class SubworkflowFeatureRequirement(ProcessRequirement):
-    pass
+    class_: Optional[str] = Field("SubworkflowFeatureRequirement", alias='class')
 
 class SoftwareRequirement(ProcessRequirement):
     pass
@@ -109,7 +109,7 @@ class WorkflowStep(BaseModel):
     run: str
     in_: list[WorkflowStepInput] = Field(..., alias='in')
     out: list[WorkflowStepOutput]
-    from_builder: Optional[bool] = False
+    from_builder: Optional[bool] = Field(False, exclude=True)
 
     # TODO CHECK we could also keep track of a dictionary of clt
     # names for checking WorkflowStepInput type. Let's see what
@@ -119,6 +119,8 @@ class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     id: Id
+
+    # TODO can class be declared there and overidden in subclasses?
 
     @computed_field
     @property
@@ -156,8 +158,8 @@ class Workflow(Process):
     inputs: list[WorkflowInputParameter]
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
-    requirements: Optional[list[ProcessRequirement]] = []
-    from_builder: Optional[bool] = False
+    requirements: Optional[list[dict[str, object]]] = []
+    from_builder: Optional[bool] = Field(False, exclude=True)
     # TODO CHECK if we can factor in process
     class_: Optional[str] = Field(alias='class', default='Workflow')
     cwlVersion: str = "v1.2"
@@ -253,9 +255,8 @@ class  WorkflowBuilder():
         # which are not already connected.
         # TODO Similarly we could have an option to hide/rename steps the list 
         # of workflow inputs.
-        # TODO connect all steps inputs to their corresponding workflow inputs
-        # using the source attribute.
         def generate_workflow_io_id(worklflow_id : str, step_id: str, io_id: str):
+            """generate id for workflow ios. Note that ('/') are forbidden."""
             return worklflow_id + "___" + step_id + "___" + io_id
 
         workflow_inputs = []
@@ -267,14 +268,6 @@ class  WorkflowBuilder():
                     workflow_input = {"id": workflow_input_id, "type":input.type}
                     input.source = workflow_input_id
                     workflow_inputs.append(workflow_input)
-
-            # step_inputs = [
-            #     {"id": generate_workflow_io_id(id, step.id, input.id),
-            #      "type":input.type}
-            #        for input in step.in_ 
-            #        if input.source == 'UNSET' # exclude linked steps.
-            #        ]
-            # workflow_inputs = workflow_inputs + step_inputs # collect all step inputs.
 
             # TODO That is where a context of loaded CLTs could be helpful.
             # So we don't keep reloading the same models.
@@ -290,8 +283,13 @@ class  WorkflowBuilder():
                 clt = CommandLineTool(**yaml_cwl)
                 output_types = {output.id:output.type for output in clt.outputs}
                 step_types[step.id] = output_types
-
-            #TODO IMPLEMENT same thing for workflow (need to recursively load types)
+            elif cwl_file.class_ == "Workflow":
+                workflow = Workflow(**yaml_cwl)
+                output_types = {output.id:output.type for output in workflow.outputs}
+                step_types[step.id] = output_types
+                kwds.setdefault("requirements", [{"class": "SubworkflowFeatureRequirement"}])
+            else:
+                raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
 
             step_outputs = [
                             {
@@ -324,16 +322,4 @@ class  WorkflowBuilder():
 
     def step():
         pass
-
-
-
-# step_builder3 = StepBuilder(wf3)
-# step3 = step_builder3()
-# print(step3)
-
-
-
-# wf4_builder = WorkflowBuilder("wf4", steps = [step3])
-# step4 = wf4_builder()
-# print(step4)
 

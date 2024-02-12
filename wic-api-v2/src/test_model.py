@@ -59,6 +59,7 @@ print(wf1)
 
 subworkflow_file = Path("tests/subworkflow1.cwl")
 wf2 = Workflow.load(subworkflow_file)
+wf2.save()
 print(wf2)
 
 # TODO So cwlparser does not check the referenced clts,
@@ -108,3 +109,11 @@ print(wf2)
 wf3_builder = WorkflowBuilder("wf3", steps=[step1, step2])
 wf3 = wf3_builder()
 print(wf3)
+
+step_builder3 = StepBuilder(wf3)
+step3 = step_builder3()
+print(step3)
+
+wf4_builder = WorkflowBuilder("wf4", steps = [step3])
+step4 = wf4_builder()
+print(step4)
