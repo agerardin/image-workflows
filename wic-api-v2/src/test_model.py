@@ -51,16 +51,16 @@ def test_cwl():
     shutil.rmtree(data_dir)
 
 
-test_cwl()
+# test_cwl()
 
-workflow_file= Path("tests/workflow5.cwl")
-wf1 = Workflow.load(workflow_file)
-print(wf1)
+# workflow_file= Path("tests/workflow5.cwl")
+# wf1 = Workflow.load(workflow_file)
+# print(wf1)
 
-subworkflow_file = Path("tests/subworkflow1.cwl")
-wf2 = Workflow.load(subworkflow_file)
-wf2.save()
-print(wf2)
+# subworkflow_file = Path("tests/subworkflow1.cwl")
+# wf2 = Workflow.load(subworkflow_file)
+# wf2.save()
+# print(wf2)
 
 # TODO So cwlparser does not check the referenced clts,
 # It justs check the definition is valid at the first level.
@@ -78,6 +78,10 @@ step_builder = StepBuilder(echo)
 step1 = step_builder()
 print(step1)
 
+step1.message = "ok"
+
+print(step1)
+
 # load a second clt
 uppercase_file = Path("tests/uppercase2_wic_compatible2.cwl")
 uppercase = CommandLineTool.load(uppercase_file)
@@ -88,15 +92,8 @@ step_builder2 = StepBuilder(uppercase)
 step2 = step_builder2()
 print(step2)
 
-
-# NOTE that is simulating the linking between 2 steps ios.
-echo_out_message_string = step1.out[0].id
-uppercase_in_message = step2.in_[0]
-uppercase_in_message.source = step1.id + "/" + echo_out_message_string
-
-echo_out_message_string = step1.out[0].id
-uppercase_message_in_message = step2.in_[1]
-uppercase_message_in_message.source = step1.id + "/" + echo_out_message_string
+step2.message = step1.message_string
+step2.uppercase_message = step1.message_string
 
 print(step1)
 print(step2)
@@ -120,9 +117,7 @@ print(touch)
 step_builder_touch = StepBuilder(touch)
 touch_step = step_builder_touch()
 
-echo_out_message_string = step3.out[1].id
-touch_touchfiles = touch_step.in_[0]
-touch_touchfiles.source = step3.id + "/" + echo_out_message_string
+touch_step.touchfiles = step3.wf3___step_uppercase2_wic_compatible2___uppercase_message
 
 wf4_builder = WorkflowBuilder("wf4", steps = [step3, touch_step])
 step4 = wf4_builder()
@@ -130,4 +125,5 @@ step4 = wf4_builder()
 print("--------------")
 
 print(step4)
+
 

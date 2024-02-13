@@ -27,6 +27,9 @@ def validate_file(file_path : Path):
 class NotAFileError(Exception):
     pass
 
+class IncompatibleTypeError(Exception):
+    pass
+
 def validProcessId(id):
     # TODO need to figure out how to deal with from_builder=True
     # where file is not yet created.
@@ -107,6 +110,20 @@ class WorkflowStepInput(BaseModel):
 class AssignableWorkflowStepInput(WorkflowStepInput):
     type: str = Field(exclude=True)
     value: None
+    step_id: str = None
+
+    def set_value(self, value: Any):
+        if isinstance(value, AssignableWorkflowStepOutput):
+            print(f"try to link {self.id} and {value}")
+            if(self.type != value.type):
+                raise IncompatibleTypeError(f"{self.type} != {value.type}")
+            # TODO create a function for that
+            self.source = value.step_id + "/" + value.id
+
+        elif self.type == "string":
+            if not isinstance(value, str):
+                raise Exception()
+            self.value = value
 
 class WorkflowStepOutput(BaseModel):
     id: str
@@ -119,6 +136,7 @@ WorkflowStepOutputId = Annotated[WorkflowStepOutput, WrapSerializer(convert_to_s
 class AssignableWorkflowStepOutput(WorkflowStepOutput):
     type: str = Field(exclude=True)
     value: str = None
+    step_id: str = None
 
 WorkflowStepId = Annotated[str,[]]
 
@@ -144,24 +162,83 @@ class WorkflowStep(BaseModel):
         # TODO CHECK For now recreate assignable model.
         # Let's make sure it is the best solution.
         assignable_ins = []
+        _inputs = {}
         for step_in in self.in_:
             process_input = inputs[step_in.id]
             values = step_in.model_dump()
             assignable_in = AssignableWorkflowStepInput(
                 **values,
                 value=None,
-                type=process_input.type
+                type=process_input.type,
+                step_id=self.id
                 )
             assignable_ins.append(assignable_in)
+            _inputs[step_in.id] = assignable_in
         self.in_ = assignable_ins
+        self._inputs = _inputs
 
         assignable_outs = []
+        _outputs = {}
         for step_out in self.out:
             process_output = outputs[step_out.id]
             values = step_out.model_dump()
-            assignable_out = AssignableWorkflowStepOutput(**values, type=process_output.type)
+            assignable_out = AssignableWorkflowStepOutput(
+                **values, type=process_output.type, step_id=self.id
+                )
             assignable_outs.append(assignable_out)
+            _outputs[step_out.id] = assignable_out
         self.out = assignable_outs
+        self._outputs = _outputs
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in [
+                    "in_",
+                    "_inputs",
+                    "out",
+                    "_outputs"
+                    ]:
+            return super().__setattr__(name, value)
+        print("known")
+        if(self._inputs and name in self._inputs):
+            print(f"input  found {name}")
+            input = self._inputs[name]
+            input.set_value(value)
+            print(input)
+        elif(self._outputs and name in self._outputs):
+            print(f"output  found {name}")
+            output = self._outputs[name]
+            output.set_value(value)
+        else:
+            raise AttributeError(f"undefined attribute {name}")
+
+    # def __getattribute__(self, __name: str) -> Any:
+    #     print(__name)
+    #     if(__name == "message_string"):
+    #         print('ok')
+    #     return super().__getattribute__(__name)
+
+    def __getattr__(self, name: str) -> Any:
+        
+        if(name == "message_string"):
+            print('ok')
+        
+        # TODO CHECK Note there is an ordering issues
+        # if we ever need to check inputs because 
+        # a input and an output can have the same name!
+        if(self._outputs and name in self._outputs):
+            print(f"output  found {name}")
+            return self._outputs[name]
+        
+        # TODO CHECK if we need inputs
+        if(self._inputs and name in self._inputs):
+            raise Exception(f"input  found {name}")
+
+    #     if self.__dict__["_inputs"]:
+    #         if __name in self._inputs:
+    #             raise Exception(f"input  found {__name}")
+    #     if self.__dict__["_outputs"]:
+    #         if __name in self._outputs:
+    #             raise Exception(f"output  found {__name}")
 
 class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
