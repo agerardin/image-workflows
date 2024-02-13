@@ -35,6 +35,8 @@ class CWLTypes(str, Enum):
         elif self == CWLTypes.FILE or self == CWLTypes.DIRECTORY:
             return isinstance(type,Path)
 
+class CWLArray(BaseModel):
+    items: CWLTypes
 
 def validate_file(file_path : Path):
     file_path = file_path.resolve()
@@ -96,16 +98,30 @@ class CommandOutputBinding(BaseModel):
 ParameterId = Annotated[str,[]]
 class Parameter(BaseModel):
     id: ParameterId
-    type: CWLTypes
+    type: Union[CWLTypes,CWLArray]
 
     @field_validator("type", mode="before")
     @classmethod
-    def transform_type(cls, type: str) -> CWLTypes:
+    def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
+        if isinstance(type, dict):
+            return CWLArray(**type)
+        if isinstance(type, list):
+            if type[0] == 'null':
+                # TODO CHECK what to do with unset optional
+                return
+            else:
+                raise NotImplementedError
         return CWLTypes(type)
 
     @field_serializer('type', when_used='always')
-    def serialize_type(type: CWLTypes):
-        serialized_type = type.value
+    def serialize_type(type: Union[CWLTypes,CWLArray]):
+        if isinstance(type, CWLTypes):
+            serialized_type = type.value
+        elif isinstance(type, CWLArray):
+            # TODO maybe switch to standard form instead
+            serialized_type = f"{type.items.value}[]"
+        else:
+            raise NotImplementedError
         return serialized_type
 
 class InputParameter(Parameter):
@@ -137,18 +153,31 @@ class WorkflowStepInput(BaseModel):
     source: str
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
-    type: CWLTypes = Field(exclude=True)
+    type: Union[CWLTypes,CWLArray] = Field(exclude=True)
     value: None
     step_id: str = None
 
     @field_validator("type", mode="before")
     @classmethod
-    def transform_type(cls, type: str) -> CWLTypes:
+    def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
+        if isinstance(type, dict):
+            return CWLArray(**type)
+        if isinstance(type, list):
+            if type[0] == 'null':
+                # TODO CHECK what to do with unset optional
+                return
+            else:
+                raise NotImplementedError
         return CWLTypes(type)
-    
+
     @field_serializer('type', when_used='always')
-    def serialize_type(type: CWLTypes):
-        serialized_type = type.value
+    def serialize_type(type: Union[CWLTypes,CWLArray]):
+        if isinstance(type, CWLTypes):
+            serialized_type = type.value
+        elif isinstance(type, CWLArray):
+            serialized_type = f"array[{type.items.value}]"
+        else:
+            raise NotImplementedError
         return serialized_type
 
     def set_value(self, value: Any):
@@ -174,17 +203,31 @@ def convert_to_string(value: Any, handler) -> str:
 WorkflowStepOutputId = Annotated[WorkflowStepOutput, WrapSerializer(convert_to_string)]
 
 class AssignableWorkflowStepOutput(WorkflowStepOutput):
-    type: CWLTypes = Field(exclude=True)
+    type: Union[CWLTypes,CWLArray] = Field(exclude=True)
     value: str = None
     step_id: str = None
 
+    @field_validator("type", mode="before")
     @classmethod
-    def transform_type(cls, type: str) -> CWLTypes:
+    def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
+        if isinstance(type, dict):
+            return CWLArray(**type)
+        if isinstance(type, list):
+            if type[0] == 'null':
+                # TODO CHECK what to do with unset optional
+                return
+            else:
+                raise NotImplementedError
         return CWLTypes(type)
-    
+
     @field_serializer('type', when_used='always')
-    def serialize_type(type: CWLTypes):
-        serialized_type = type.value
+    def serialize_type(type: Union[CWLTypes,CWLArray]):
+        if isinstance(type, CWLTypes):
+            serialized_type = type.value
+        elif isinstance(type, CWLArray):
+            serialized_type = f"array[{type.items.value}]"
+        else:
+            raise NotImplementedError
         return serialized_type
 
 WorkflowStepId = Annotated[str,[]]
