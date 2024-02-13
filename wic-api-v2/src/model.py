@@ -251,6 +251,9 @@ class WorkflowStep(BaseModel):
         """Return name of input from InputParameter.id."""
         res = [{"id": wf_step_output} for wf_step_output in out]
         return res
+    
+    def promote_cwl_type(self, type: CWLTypes):
+        return {"type": "array", "items": type}
 
     def set_mutable_ios(self, inputs: dict[ParameterId, InputParameter], outputs: dict[ParameterId, OutputParameter]):
         # TODO CHECK For now recreate assignable model.
@@ -259,11 +262,15 @@ class WorkflowStep(BaseModel):
         _inputs = {}
         for step_in in self.in_:
             process_input = inputs[step_in.id]
+            in_type = process_input.type
+            if self.scatter:
+                if step_in.id in self.scatter:
+                    in_type = self.promote_cwl_type(process_input.type)
             values = step_in.model_dump()
             assignable_in = AssignableWorkflowStepInput(
                 **values,
                 value=None,
-                type=process_input.type,
+                type=in_type,
                 step_id=self.id
                 )
             assignable_ins.append(assignable_in)
@@ -275,9 +282,12 @@ class WorkflowStep(BaseModel):
         _outputs = {}
         for step_out in self.out:
             process_output = outputs[step_out.id]
+            out_type = process_output.type
+            if self.scatter:
+                out_type = self.promote_cwl_type(process_output.type)
             values = step_out.model_dump()
             assignable_out = AssignableWorkflowStepOutput(
-                **values, type=process_output.type, step_id=self.id
+                **values, type=out_type, step_id=self.id
                 )
             assignable_outs.append(assignable_out)
             _outputs[step_out.id] = assignable_out
@@ -292,14 +302,11 @@ class WorkflowStep(BaseModel):
                     "_outputs"
                     ]:
             return super().__setattr__(name, value)
-        print("known")
         if(self._inputs and name in self._inputs):
-            print(f"input  found {name}")
             input = self._inputs[name]
             input.set_value(value)
             print(input)
         elif(self._outputs and name in self._outputs):
-            print(f"output  found {name}")
             output = self._outputs[name]
             output.set_value(value)
         else:
@@ -457,15 +464,19 @@ class StepBuilder():
     For each input/output of the clt, a corresponding step in/out is created.
     """
 
-    def __init__(self, process : Process):
+    def __init__(self, process : Process, scatter : list[str] = None):
         # Generate a step id from the clt name
         id = "step_"+ process.name
         run = process.id
+
         # TODO change. For now set source to "UNSET"
         inputs = [{"id":input.id, "source":"UNSET", "type": input.type}
                   for input in process.inputs]
+        
+
         outputs = [output.id for output in process.outputs]
         self.step = WorkflowStep(
+            scatter = scatter,
             id = id,
             run = run,
             in_ = inputs,
