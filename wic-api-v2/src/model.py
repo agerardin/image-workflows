@@ -12,9 +12,7 @@ from pydantic.dataclasses import dataclass
 from typing import NewType, Optional, Any
 from rich import print
 from urllib.parse import unquote, urlparse
-# TODO update to v2 if we want to go this route
-# RootModel us used to serialize dataclasses
-# from pydantic import RootModel
+
 
 def validate_file(file_path : Path):
     file_path = file_path.resolve()
@@ -44,8 +42,6 @@ def validProcessId(id):
     
 
 ProcessId = Annotated[str, AfterValidator(validProcessId)]
-
-# Id = NewType("Id", str)
 
 class ProcessRequirement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -143,7 +139,7 @@ WorkflowStepId = Annotated[str,[]]
 
 class WorkflowStep(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-
+    
     id: WorkflowStepId
     run: str
     in_: list[WorkflowStepInput] = Field(..., alias='in')
@@ -212,20 +208,14 @@ class WorkflowStep(BaseModel):
         else:
             raise AttributeError(f"undefined attribute {name}")
 
-    # def __getattribute__(self, __name: str) -> Any:
-    #     print(__name)
-    #     if(__name == "message_string"):
-    #         print('ok')
-    #     return super().__getattribute__(__name)
-
     def __getattr__(self, name: str) -> Any:
-        
-        if(name == "message_string"):
-            print('ok')
         
         # TODO CHECK Note there is an ordering issues
         # if we ever need to check inputs because 
         # a input and an output can have the same name!
+        # NOTE we could disambiguate in from out if necessary
+        # NOTE similarly, we could create unique step name if necessary.
+        # (in case the same step is repeated n times).
         if(self._outputs and name in self._outputs):
             print(f"output  found {name}")
             return self._outputs[name]
@@ -235,12 +225,9 @@ class WorkflowStep(BaseModel):
             raise Exception(f"input  found {name}")
 
     def save_config(self, path = Path()) -> Path:
-        config = {input.id: input.value for input in self.in_ if input.value}  
-        for input in self.in_:
-            print(f"!!!!!!!!! {input}")
-            if input.value:
-                print(f"########## found value for {input}")
-
+        config = {input.id: input.value for input in self.in_ if input.value}
+        
+        #TODO same code as process.save() so factor
         path = path.resolve()
         if not path.exists():
             raise FileNotFoundError()
