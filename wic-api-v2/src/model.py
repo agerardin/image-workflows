@@ -1,7 +1,7 @@
 from typing import Annotated, Union
 from pydantic import (
     BaseModel, ConfigDict, Field, PrivateAttr, ValidationError,
-    computed_field, validator, WrapSerializer
+    computed_field, validator, WrapSerializer, field_serializer
 )
 from pydantic.functional_validators import AfterValidator, field_validator
 import cwl_utils.parser as cwl_parser
@@ -12,6 +12,28 @@ from pydantic.dataclasses import dataclass
 from typing import NewType, Optional, Any
 from rich import print
 from urllib.parse import unquote, urlparse
+from enum import Enum
+
+class CWLTypes(str, Enum):
+    NULL = "null"
+    BOOLEAN = "boolean"
+    INT = "int"
+    LONG = "long"
+    FLOAT = "float"
+    DOUBLE = "double"
+    STRING = "string"
+    FILE = "File"
+    DIRECTORY = "Directory"
+
+    def isValidType(self, type):
+        if self == CWLTypes.STRING:
+            return isinstance(type, str)
+        elif self == CWLTypes.INT or self == CWLTypes.LONG:
+            return isinstance(type, int)
+        elif self == CWLTypes.FLOAT or self == CWLTypes.DOUBLE:
+            return isinstance(type, float)
+        elif self == CWLTypes.FILE or self == CWLTypes.DIRECTORY:
+            return isinstance(type,Path)
 
 
 def validate_file(file_path : Path):
@@ -74,7 +96,17 @@ class CommandOutputBinding(BaseModel):
 ParameterId = Annotated[str,[]]
 class Parameter(BaseModel):
     id: ParameterId
-    type: str
+    type: CWLTypes
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def transform_type(cls, type: str) -> CWLTypes:
+        return CWLTypes(type)
+
+    @field_serializer('type', when_used='always')
+    def serialize_type(type: CWLTypes):
+        serialized_type = type.value
+        return serialized_type
 
 class InputParameter(Parameter):
     pass
@@ -105,22 +137,33 @@ class WorkflowStepInput(BaseModel):
     source: str
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
-    type: str = Field(exclude=True)
+    type: CWLTypes = Field(exclude=True)
     value: None
     step_id: str = None
 
+    @field_validator("type", mode="before")
+    @classmethod
+    def transform_type(cls, type: str) -> CWLTypes:
+        return CWLTypes(type)
+    
+    @field_serializer('type', when_used='always')
+    def serialize_type(type: CWLTypes):
+        serialized_type = type.value
+        return serialized_type
+
     def set_value(self, value: Any):
         if isinstance(value, AssignableWorkflowStepOutput):
-            print(f"try to link {self.id} and {value}")
             if(self.type != value.type):
                 raise IncompatibleTypeError(f"{self.type} != {value.type}")
             # TODO create a function for that
             self.source = value.step_id + "/" + value.id
-
-        elif self.type == "string":
-            if not isinstance(value, str):
-                raise Exception()
-            self.value = value
+        elif value is not None:
+            if not self.type.isValidType(value):
+                raise IncompatibleTypeError(f"Cannot assign {value} to {self.id} of type {self.type}")
+        else:
+            # TODO remove once done
+            raise NotImplementedError("this case is not properly handled.")
+        self.value = value
 
 class WorkflowStepOutput(BaseModel):
     id: str
@@ -131,9 +174,18 @@ def convert_to_string(value: Any, handler) -> str:
 WorkflowStepOutputId = Annotated[WorkflowStepOutput, WrapSerializer(convert_to_string)]
 
 class AssignableWorkflowStepOutput(WorkflowStepOutput):
-    type: str = Field(exclude=True)
+    type: CWLTypes = Field(exclude=True)
     value: str = None
     step_id: str = None
+
+    @classmethod
+    def transform_type(cls, type: str) -> CWLTypes:
+        return CWLTypes(type)
+    
+    @field_serializer('type', when_used='always')
+    def serialize_type(type: CWLTypes):
+        serialized_type = type.value
+        return serialized_type
 
 WorkflowStepId = Annotated[str,[]]
 
