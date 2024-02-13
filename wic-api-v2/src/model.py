@@ -175,7 +175,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
         if isinstance(type, CWLTypes):
             serialized_type = type.value
         elif isinstance(type, CWLArray):
-            serialized_type = f"array[{type.items.value}]"
+            serialized_type = f"{type.items.value}[]"
         else:
             raise NotImplementedError
         return serialized_type
@@ -225,7 +225,7 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
         if isinstance(type, CWLTypes):
             serialized_type = type.value
         elif isinstance(type, CWLArray):
-            serialized_type = f"array[{type.items.value}]"
+            serialized_type = f"{type.items.value}[]"
         else:
             raise NotImplementedError
         return serialized_type
@@ -239,6 +239,8 @@ class WorkflowStep(BaseModel):
     run: str
     in_: list[WorkflowStepInput] = Field(..., alias='in')
     out: list[WorkflowStepOutputId]
+    # TODO CHECK if we can type it to StepInputId
+    scatter: Optional[list[str]] = Field(None)
     from_builder: Optional[bool] = Field(False, exclude=True)
 
 
