@@ -120,10 +120,22 @@ touch_step = step_builder_touch()
 touch_step.touchfiles = step3.wf3___step_uppercase2_wic_compatible2___uppercase_message
 
 wf4_builder = WorkflowBuilder("wf4", steps = [step3, touch_step])
-step4 = wf4_builder()
+
+
+wf4 = wf4_builder()
+
+step_builder4 = StepBuilder(wf4)
+step4 = step_builder4()
 
 print("--------------")
 
-print(step4)
+print(wf4)
+
+step4.wf4___step_wf3___wf3___step_echo_string___message = "ok"
+step4.save_config()
+
+
+
+
 
 

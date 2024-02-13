@@ -88,8 +88,10 @@ class OutputParameter(Parameter):
 
 
 class WorkflowInputParameter(InputParameter):
+    # TODO CHECK for now, rely on step logic to generate config
+    #  we may revisit later
+    # value:Optional[Any] = Field(None, exclude=True)
     pass
-
 
 class WorkflowOutputParameter(OutputParameter):
     outputSource: str
@@ -103,7 +105,6 @@ class CommandOutputParameter(OutputParameter):
 
 StepInputId = Annotated[str,[]]
 class WorkflowStepInput(BaseModel):
-
     id: StepInputId
     source: str
 
@@ -233,12 +234,26 @@ class WorkflowStep(BaseModel):
         if(self._inputs and name in self._inputs):
             raise Exception(f"input  found {name}")
 
-    #     if self.__dict__["_inputs"]:
-    #         if __name in self._inputs:
-    #             raise Exception(f"input  found {__name}")
-    #     if self.__dict__["_outputs"]:
-    #         if __name in self._outputs:
-    #             raise Exception(f"output  found {__name}")
+    def save_config(self, path = Path()) -> Path:
+        config = {input.id: input.value for input in self.in_ if input.value}  
+        for input in self.in_:
+            print(f"!!!!!!!!! {input}")
+            if input.value:
+                print(f"########## found value for {input}")
+
+        path = path.resolve()
+        if not path.exists():
+            raise FileNotFoundError()
+        if not path.is_dir():
+            # TODO create exception for this?
+            # TODO fallback (like checking parent and using it?)
+            raise Exception(f"{path} is not a directory.")
+
+        file_path = path / (self.id + ".yaml")
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(dump(config))
+            return file_path 
+    
 
 class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -275,7 +290,7 @@ class Process(BaseModel):
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(dump(serialized_process))
             return file_path 
-        
+
     # TODO CHECK can we have equivalent of virtual methods in python?
     # load() should be defined by subclass but declared here.
 
