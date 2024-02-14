@@ -37,9 +37,9 @@ step1 = step_builder()
 print(step1)
 
 # load a second clt
-uppercase_file = Path("tests/uppercase2_wic_compatible2.cwl")
+uppercase_file = Path("tests/uppercase2_wic_compatible3.cwl")
 uppercase = CommandLineTool.load(uppercase_file)
-# print(uppercase)
+print(uppercase)
 
 scattered_inputs = [input.id for input in uppercase.inputs]
 
@@ -51,7 +51,8 @@ step2 = step_builder2()
 print(step2)
 
 step2.message = step1.message_string
-step2.uppercase_message = step1.message_string
+# TODO UGLY MESSAGE WHEN THIS ATTRIBUTE IS NOT PRESENT!
+# step2.uppercase_message = step1.message_string
 
 print("----------")
 print(step1)

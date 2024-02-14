@@ -583,6 +583,7 @@ class  WorkflowBuilder():
             #     }
             # worklfow_outputs.append(workflow_output)
         if scatterRequirement:
+            # TODO CHECK cwl spec. if multiple inputs, we also need to add a scatter method.
             requirements.append({"class": "ScatterFeatureRequirement"})
         if subworkflowFeatureRequirement:
             requirements.append({"class": "SubworkflowFeatureRequirement"})                
