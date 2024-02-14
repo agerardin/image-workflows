@@ -35,6 +35,9 @@ class CWLTypes(str, Enum):
         elif self == CWLTypes.FILE or self == CWLTypes.DIRECTORY:
             return isinstance(type,Path)
 
+# TODO CHECK could we get Array of Array?
+# Ex: scattering a step with a CWLArray input?
+# CWL Standard mentioned something about nested arrays.
 class CWLArray(BaseModel):
     items: CWLTypes
 
@@ -377,7 +380,7 @@ class Process(BaseModel):
             raise Exception(f"{path} is not a directory.")
 
         file_path = path / (self.name + ".cwl")
-        serialized_process = self.model_dump(by_alias=True, exclude={'name'})
+        serialized_process = self.model_dump(by_alias=True, exclude={'name'}, exclude_none=True)
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(dump(serialized_process))
             return file_path 
@@ -508,50 +511,85 @@ class  WorkflowBuilder():
             return worklflow_id + "___" + step_id + "___" + io_id
 
         workflow_inputs = []
-        worklfow_outputs = []
+        workflow_outputs = []
+        requirements = []
+        scatterRequirement = False
+        subworkflowFeatureRequirement = False
         for step in kwds.get("steps"):
+            # TODO CHECK best way to test a list is not empty?
+            if not not step.scatter:
+                scatterRequirement = True
             for input in step.in_:
                 if input.source == 'UNSET':
+                    # TODO create method, we could also wrap CWLTypes in a pydantic model
+                    input_type = input.type
+                    input_type = input_type.model_dump() if isinstance(input_type, CWLArray) else input_type.value
                     workflow_input_id = generate_workflow_io_id(id, step.id, input.id)
-                    workflow_input = {"id": workflow_input_id, "type":input.type}
+                    workflow_input = {"id": workflow_input_id,"type":input_type}
                     input.source = workflow_input_id
                     workflow_inputs.append(workflow_input)
 
+            for output in step.out:
+                    output_type = output.type
+                    output_type = output_type.model_dump() if isinstance(output_type, CWLArray) else output_type.value
+                    workflow_output_id = generate_workflow_io_id(id, step.id, output.id)
+                    workflow_output = {"id": workflow_output_id,
+                                       "type":output_type,
+                                       "outputSource": step.id + "/" + output.id
+                                       }
+                    workflow_outputs.append(workflow_output)
+
             # TODO That is where a context of loaded CLTs could be helpful.
             # So we don't keep reloading the same models.
+            cwl_file = cwl_parser.load_document_by_uri(step.run)
+            yaml_cwl = cwl_parser.save(cwl_file)
+            if cwl_file.class_ == "CommandLineTool":
+                clt = CommandLineTool(**yaml_cwl)
+            elif cwl_file.class_ == "Workflow":
+                workflow = Workflow(**yaml_cwl)
+                subworkflowFeatureRequirement = True
+            else:
+                raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
+
+
+            ## TODO That is where a context of loaded CLTs could be helpful.
+            ## So we don't keep reloading the same models.
 
             # Collect types of each CLT inputs referenced.
             # TODO probably should do it anyhow because we could parse
             # non generated steps.
             # Check that generated steps have correct input types?
-            step_types = {}
-            cwl_file = cwl_parser.load_document_by_uri(step.run)
-            yaml_cwl = cwl_parser.save(cwl_file)
-            if cwl_file.class_ == "CommandLineTool":
-                clt = CommandLineTool(**yaml_cwl)
-                step_types[step.id] = clt._outputs
-            elif cwl_file.class_ == "Workflow":
-                workflow = Workflow(**yaml_cwl)
-                step_types[step.id] = workflow._outputs
-                kwds.setdefault("requirements", [{"class": "SubworkflowFeatureRequirement"}])
-            else:
-                raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
+            # step_types = {}
+            # cwl_file = cwl_parser.load_document_by_uri(step.run)
+            # yaml_cwl = cwl_parser.save(cwl_file)
+            # if cwl_file.class_ == "CommandLineTool":
+            #     clt = CommandLineTool(**yaml_cwl)
+            #     step_types[step.id] = clt._outputs
+            # elif cwl_file.class_ == "Workflow":
+            #     workflow = Workflow(**yaml_cwl)
+            #     step_types[step.id] = workflow._outputs
+            #     kwds.setdefault("requirements", [{"class": "SubworkflowFeatureRequirement"}])
+            # else:
+            #     raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
 
-            # TODO do not hand generate outputSource but create a method to 
-            # encapsulate this
-            step_outputs = [
-                            {
-                            "id": generate_workflow_io_id(id, step.id, output.id),
-                            "type": step_types[step.id][output.id].type, 
-                            "outputSource": step.id + "/" + output.id
-                            } for output in step.out
-                            ]
-            # For now, every step output becomes a workflow output.
-            worklfow_outputs = worklfow_outputs + step_outputs
+            # # TODO do not hand generate outputSource but create a method to 
+            # # encapsulate this
+            # for output in step.out:
+            #     out_type = f"{step_types[step.id][output.id].type}[]" if step.scatter else step_types[step.id][output.id].type   
+            #     workflow_output = {
+            #         "id": generate_workflow_io_id(id, step.id, output.id),
+            #         "type": out_type,
+            #         "outputSource": step.id + "/" + output.id
+            #     }
+            # worklfow_outputs.append(workflow_output)
+        if scatterRequirement:
+            requirements.append({"class": "ScatterFeatureRequirement"})
+        if subworkflowFeatureRequirement:
+            requirements.append({"class": "SubworkflowFeatureRequirement"})                
 
         kwds.setdefault("inputs", workflow_inputs)
-        kwds.setdefault("outputs", worklfow_outputs)
-
+        kwds.setdefault("outputs", workflow_outputs)
+        kwds.setdefault("requirements", requirements)
         # NOTE for this to work, we would need to serialize to disk
         # TODO CHECK if there is a better way to solve this
         id = (Path() / (id + ".cwl")).resolve().as_uri()

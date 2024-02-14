@@ -47,7 +47,8 @@ scattered_inputs = [input.id for input in uppercase.inputs]
 # build our second step
 step_builder2 = StepBuilder(uppercase, scatter=scattered_inputs)
 step2 = step_builder2()
-# print(step2)
+
+print(step2)
 
 step2.message = step1.message_string
 step2.uppercase_message = step1.message_string
@@ -56,4 +57,9 @@ print("----------")
 print(step1)
 print("----------")
 print(step2)
+
+wf3_builder = WorkflowBuilder("wf3_scatter", steps=[step1, step2])
+wf3 = wf3_builder()
+print(wf3)
+
 
