@@ -42,3 +42,4 @@ echo_string.cwl
 subworkflow1.cwl
 wf4.cwl
 *back.cwl
+wf*.cwl
