@@ -5,3 +5,7 @@ from polus.pipelines.workflows.model import (
     WorkflowBuilder,
     StepBuilder
 )
+
+from polus.pipelines.workflows.utils import (
+    run_cwl
+)
