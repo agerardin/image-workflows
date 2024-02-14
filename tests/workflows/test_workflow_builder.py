@@ -2,6 +2,7 @@ import pytest
 
 from pathlib import Path
 import logging
+import subprocess
 from rich import print
 
 from polus.pipelines.workflows import (
@@ -72,7 +73,7 @@ def test_workflow_builder_with_subworkflows(test_data_dir: Path, clts: list[str]
     step2.message = step1.message_string
     step2.uppercase_message = step1.message_string
 
-    wf_builder = WorkflowBuilder("wf3", steps=steps)
+    wf_builder = WorkflowBuilder("wf3", steps=[step1, step2])
     wf: Workflow = wf_builder()
     print(wf)
     step_builder = StepBuilder(wf)
@@ -80,6 +81,7 @@ def test_workflow_builder_with_subworkflows(test_data_dir: Path, clts: list[str]
     print(step12)
 
     step3.touchfiles = step12.wf3___step_uppercase2_wic_compatible2___uppercase_message
+    
     wf_builder = WorkflowBuilder("wf4", steps = [step12, step3])
     wf4 = wf_builder()
 
@@ -89,5 +91,16 @@ def test_workflow_builder_with_subworkflows(test_data_dir: Path, clts: list[str]
 
     step4.wf4___step_wf3___wf3___step_echo_string___message = "ok"
     config = step4.save_config()
+
+    # TODO CHECK and replace by generic workflow name
+    cmd = ["cwltool", f"wf4.cwl", config.as_posix()]
+    proc = subprocess.run(
+        args=cmd,
+        capture_output=False,
+        check=True,
+        text=True,
+        universal_newlines=True,
+    )
+
 
     print(config)
