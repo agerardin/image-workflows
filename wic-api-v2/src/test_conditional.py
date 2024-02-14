@@ -7,10 +7,10 @@ from model import (
 )
 from rich import print
 
-# conditional_workflow_file= Path("tests/conditional-workflow.cwl")
-# scatter_wf = Workflow.load(conditional_workflow_file)
-# scatter_wf.save()
-# print(scatter_wf)
+conditional_workflow_file= Path("tests/conditional-workflow.cwl")
+scatter_wf = Workflow.load(conditional_workflow_file)
+scatter_wf.save()
+print(scatter_wf)
 
 # load a clt
 echo_uppercase_wf_file = Path("tests/workflow3.cwl")
@@ -26,11 +26,14 @@ step_builder = StepBuilder(touch,
                            when="$(inputs.should_execute < 1)",
                            when_input_names=["should_execute"],
                            add_inputs=[{"id": "should_execute",
-                                        "type": "string"
+                                        "type": "int"
                                         }])
 step2 = step_builder()
 print(step2)
 
-wf3_builder = WorkflowBuilder("conditional_workflow_generated.cwl", steps=[step1, step2])
+step2.touchfiles = step1.uppercase_message
+
+wf3_builder = WorkflowBuilder("conditional_workflow_generated", steps=[step1, step2])
 wf3 = wf3_builder()
 print(wf3)
+

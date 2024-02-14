@@ -259,19 +259,24 @@ class WorkflowStep(BaseModel):
     def promote_cwl_type(self, type: CWLTypes):
         return {"type": "array", "items": type}
 
+    # TODO use pydantic model instead
     def set_mutable_ios(self,
-                        inputs: dict[ParameterId, InputParameter],
-                        outputs: dict[ParameterId, OutputParameter]):
+                        inputs: list[dict],
+                        outputs: list[dict]):
         # TODO CHECK For now recreate assignable model.
         # Let's make sure it is the best solution.
+        inputs = {input["id"]:input for input in inputs}
+        outputs = {output["id"]:output for output in outputs}
+
         assignable_ins = []
         _inputs = {}
         for step_in in self.in_:
             process_input = inputs[step_in.id]
-            in_type = process_input.type
+            # TODO change when we have a model
+            in_type = process_input["type"]
             if self.scatter:
                 if step_in.id in self.scatter:
-                    in_type = self.promote_cwl_type(process_input.type)
+                    in_type = self.promote_cwl_type(in_type)
             values = step_in.model_dump()
             assignable_in = AssignableWorkflowStepInput(
                 **values,
@@ -289,9 +294,10 @@ class WorkflowStep(BaseModel):
         _outputs = {}
         for step_out in self.out:
             process_output = outputs[step_out.id]
-            out_type = process_output.type
+            # TODO change when have a model
+            out_type = process_output["type"]
             if self.scatter:
-                out_type = self.promote_cwl_type(process_output.type)
+                out_type = self.promote_cwl_type(out_type)
             values = step_out.model_dump()
             assignable_out = AssignableWorkflowStepOutput(
                 **values, type=out_type, step_id=self.id
@@ -482,7 +488,6 @@ class StepBuilder():
         # TODO change. For now set source to "UNSET"
         inputs = [{"id":input.id, "source":"UNSET", "type": input.type}
                   for input in process.inputs]
-
         outputs = [output.id for output in process.outputs]
         
         # Generate additional inputs.
@@ -521,8 +526,13 @@ class StepBuilder():
             out = outputs,
             from_builder = True,
             )
+        
+        # TODO update pydantic to consume this model
+        # rather than having to generate string, then type?
+        # But we have to make sure it works when loading plain cwl files.
+        outputs = [{"id":output.id, "type":output.type} for output in process.outputs]
 
-        self.step.set_mutable_ios(process._inputs, process._outputs)    
+        self.step.set_mutable_ios(inputs, outputs)    
 
 
     def __call__(self) -> WorkflowStep:
@@ -552,10 +562,13 @@ class  WorkflowBuilder():
         requirements = []
         scatterRequirement = False
         subworkflowFeatureRequirement = False
+        inlineJavascriptRequirement = False
         for step in kwds.get("steps"):
             # TODO CHECK best way to test a list is not empty?
             if not not step.scatter:
                 scatterRequirement = True
+            if not not step.when:
+                inlineJavascriptRequirement = True
             for input in step.in_:
                 if input.source == 'UNSET':
                     # TODO create method, we could also wrap CWLTypes in a pydantic model
@@ -624,6 +637,8 @@ class  WorkflowBuilder():
             requirements.append({"class": "ScatterFeatureRequirement"})
         if subworkflowFeatureRequirement:
             requirements.append({"class": "SubworkflowFeatureRequirement"})                
+        if inlineJavascriptRequirement:
+            requirements.append({"class": "InlineJavascriptRequirement"})
 
         kwds.setdefault("inputs", workflow_inputs)
         kwds.setdefault("outputs", workflow_outputs)
