@@ -259,7 +259,9 @@ class WorkflowStep(BaseModel):
     def promote_cwl_type(self, type: CWLTypes):
         return {"type": "array", "items": type}
 
-    def set_mutable_ios(self, inputs: dict[ParameterId, InputParameter], outputs: dict[ParameterId, OutputParameter]):
+    def set_mutable_ios(self,
+                        inputs: dict[ParameterId, InputParameter],
+                        outputs: dict[ParameterId, OutputParameter]):
         # TODO CHECK For now recreate assignable model.
         # Let's make sure it is the best solution.
         assignable_ins = []
@@ -279,6 +281,7 @@ class WorkflowStep(BaseModel):
                 )
             assignable_ins.append(assignable_in)
             _inputs[step_in.id] = assignable_in
+
         self.in_ = assignable_ins
         self._inputs = _inputs
 
@@ -409,6 +412,7 @@ class Workflow(Process):
     def _outputs(self) -> dict[ParameterId, WorkflowOutputParameter]:
         return {output.id: output for output in self.outputs}
 
+    # TODO See comment on CommandLineTool.load
     @classmethod
     def load(cls, clt_file: Path) -> 'Workflow':
         """Load a Workflow from a cwl workflow file.
@@ -443,7 +447,9 @@ class CommandLineTool(Process):
     def _outputs(self) -> dict[ParameterId, CommandOutputParameter]:
         return {output.id: output for output in self.outputs}
 
-
+    # TODO either check type is commandLine
+    # or allow virtual definition in parent class and implement
+    # in each subclass.
     @classmethod
     def load(cls, clt_file: Path) -> 'CommandLineTool':
         """Load a CLT from a cwl clt file.
@@ -468,7 +474,7 @@ class StepBuilder():
     For each input/output of the clt, a corresponding step in/out is created.
     """
 
-    def __init__(self, process : Process, scatter : list[str] = None):
+    def __init__(self, process : Process, scatter : list[str] = None, when: str = None, add_inputs: list[dict] = None, when_input_names: list[str] = None):
         # Generate a step id from the clt name
         id = "step_"+ process.name
         run = process.id
@@ -476,18 +482,48 @@ class StepBuilder():
         # TODO change. For now set source to "UNSET"
         inputs = [{"id":input.id, "source":"UNSET", "type": input.type}
                   for input in process.inputs]
-        
 
         outputs = [output.id for output in process.outputs]
+        
+        # Generate additional inputs.
+        # For example,if the conditional clause contains unknown inputs.
+        # It could also be to generate fake inputs for wic compatibility.
+        # TODO REVISIT that later after some use.
+        
+
+        # input referenced in the when clause may or may not be already declared if the process.
+        # If not, user must provide a description of it.
+        # TODO we could evaluate the clause rather than having the user declare explicitly.
+        
+        _add_inputs_ids = set([input["id"] for input in add_inputs]) if add_inputs else set()
+
+        if when:
+            if not when_input_names:
+                raise Exception("You need to specify which inputs are referenced in the when clause.")
+            
+            _process_inputs_ids = set([input.id for input in process.inputs])
+            for when_input_name in when_input_names:
+                if not (when_input_name in _process_inputs_ids):
+                    if not(when_input_name in _add_inputs_ids):
+                        raise Exception("Input in when clause unknown. Please add its declaration to add_inputs arguments.")
+        
+        if add_inputs:
+            # TODO refactor : same model use twice
+            inputs = inputs + [{"id":input["id"], "source":"UNSET", "type": input["type"]}
+                for input in add_inputs]
+            
         self.step = WorkflowStep(
             scatter = scatter,
+            when = when,
             id = id,
             run = run,
             in_ = inputs,
             out = outputs,
             from_builder = True,
             )
-        self.step.set_mutable_ios(process._inputs, process._outputs)
+
+        self.step.set_mutable_ios(process._inputs, process._outputs)    
+
 
     def __call__(self) -> WorkflowStep:
         return self.step
