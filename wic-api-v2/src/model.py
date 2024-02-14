@@ -244,6 +244,7 @@ class WorkflowStep(BaseModel):
     out: list[WorkflowStepOutputId]
     # TODO CHECK if we can type it to StepInputId
     scatter: Optional[list[str]] = Field(None)
+    when: Optional[str] = Field(None)
     from_builder: Optional[bool] = Field(False, exclude=True)
 
 
@@ -607,5 +608,5 @@ class  WorkflowBuilder():
         return self.workflow
 
     def step():
-        pass
+        raise NotImplemented
 
