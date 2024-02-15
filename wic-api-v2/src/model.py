@@ -1,4 +1,4 @@
-from typing import Annotated, Union
+from typing import Annotated, Union, get_args
 from pydantic import (
     BaseModel, ConfigDict, Field, PrivateAttr, ValidationError,
     computed_field, validator, WrapSerializer, field_serializer
@@ -48,6 +48,8 @@ def validate_file(file_path : Path):
     if not file_path.is_file():
         raise NotAFileError()
     return file_path
+
+CWLAllTypes = Union[CWLTypes,CWLArray]
 
 class NotAFileError(Exception):
     pass
@@ -106,6 +108,15 @@ class Parameter(BaseModel):
     @field_validator("type", mode="before")
     @classmethod
     def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
+        
+        if isinstance(type, get_args(CWLAllTypes)):
+            return type
+        # TODO remove
+        if isinstance(type, CWLTypes):
+            raise Exception("problem with type checking.")
+        if isinstance(type, CWLArray):
+            raise Exception("problem with type checking.")
+        
         if isinstance(type, dict):
             return CWLArray(**type)
         if isinstance(type, list):
@@ -263,6 +274,9 @@ class WorkflowStep(BaseModel):
     def set_mutable_ios(self,
                         inputs: list[dict],
                         outputs: list[dict]):
+        
+        print(f"############## {inputs}")
+
         # TODO CHECK For now recreate assignable model.
         # Let's make sure it is the best solution.
         inputs = {input["id"]:input for input in inputs}
@@ -278,6 +292,7 @@ class WorkflowStep(BaseModel):
                 if step_in.id in self.scatter:
                     in_type = self.promote_cwl_type(in_type)
             values = step_in.model_dump()
+            
             assignable_in = AssignableWorkflowStepInput(
                 **values,
                 value=None,
@@ -494,14 +509,11 @@ class StepBuilder():
         # For example,if the conditional clause contains unknown inputs.
         # It could also be to generate fake inputs for wic compatibility.
         # TODO REVISIT that later after some use.
-        
+        _add_inputs_ids = set([input["id"] for input in add_inputs]) if add_inputs else set()
 
         # input referenced in the when clause may or may not be already declared if the process.
         # If not, user must provide a description of it.
         # TODO we could evaluate the clause rather than having the user declare explicitly.
-        
-        _add_inputs_ids = set([input["id"] for input in add_inputs]) if add_inputs else set()
-
         if when:
             if not when_input_names:
                 raise Exception("You need to specify which inputs are referenced in the when clause.")

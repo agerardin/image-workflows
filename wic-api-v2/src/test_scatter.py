@@ -63,4 +63,15 @@ wf3_builder = WorkflowBuilder("wf3_scatter", steps=[step1, step2])
 wf3 = wf3_builder()
 print(wf3)
 
+step_builder = StepBuilder(wf3)
+wf_step = step_builder()
+# wf_step.in_[0] = ["ok"]
+
+# assert wf.inputs[0].value == "ok"
+# config = wf_step.save_config()
+
+# run_cwl(Path()/f"{wf.name}.cwl", config)
+
+# print(config)
+
 

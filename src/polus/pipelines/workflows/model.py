@@ -41,6 +41,9 @@ class CWLTypes(str, Enum):
 class CWLArray(BaseModel):
     items: CWLTypes
 
+    def isValidType(self, type):
+        return isinstance(type, list)
+
 def validate_file(file_path : Path):
     file_path = file_path.resolve()
     if not file_path.exists():
@@ -124,7 +127,7 @@ class Parameter(BaseModel):
             # TODO maybe switch to standard form instead
             serialized_type = f"{type.items.value}[]"
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"No support for type : {type}")
         return serialized_type
 
 class InputParameter(Parameter):
@@ -183,6 +186,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
             raise NotImplementedError
         return serialized_type
 
+    # TODO CHECK we could use pydantic model instead
     def set_value(self, value: Any):
         if isinstance(value, AssignableWorkflowStepOutput):
             if(self.type != value.type):
@@ -257,7 +261,11 @@ class WorkflowStep(BaseModel):
         return res
     
     def promote_cwl_type(self, type: CWLTypes):
+        if isinstance(type, CWLArray):
+            #TODO FIX
+            raise NotImplementedError("scattering CWLArray is not yet implemented.")
         return {"type": "array", "items": type}
+        
 
     # TODO use pydantic model instead
     def set_mutable_ios(self,
@@ -277,6 +285,8 @@ class WorkflowStep(BaseModel):
             if self.scatter:
                 if step_in.id in self.scatter:
                     in_type = self.promote_cwl_type(in_type)
+
+            print(f"!!!!!! {in_type}")
             values = step_in.model_dump()
             assignable_in = AssignableWorkflowStepInput(
                 **values,
@@ -337,9 +347,11 @@ class WorkflowStep(BaseModel):
             print(f"output  found {name}")
             return self._outputs[name]
         
-        # TODO CHECK if we need inputs
+        # TODO CHECK return defensive copy / read-only?
+        # we can use inputs to check property of the workflow
         if(self._inputs and name in self._inputs):
-            raise Exception(f"input  found {name}")
+            print(f"input  found {name}")
+            return self._inputs[name]
 
     def save_config(self, path = Path()) -> Path:
         config = {input.id: input.value for input in self.in_ if input.value}
