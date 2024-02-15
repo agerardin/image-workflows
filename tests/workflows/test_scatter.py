@@ -29,6 +29,12 @@ def test_load_scatter_wf(test_data_dir: Path, tmp_dir: Path, filename):
     assert isinstance(wf_input.type,CWLArray)
     assert wf_input.type.items == CWLTypes.STRING
 
+    # Check we do have a scatter feature requirement
+    assert "ScatterFeatureRequirement" in set(
+        [req['class'] for req in scatter_wf.requirements]
+        )
+
+
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])
 def test_build_scatter_step(test_data_dir: Path,
