@@ -13,7 +13,7 @@ from typing import NewType, Optional, Any
 from rich import print
 from urllib.parse import unquote, urlparse
 from enum import Enum
-
+import os
 
 class CWLTypes(str, Enum):
     """CWL basic types."""
@@ -477,9 +477,17 @@ class WorkflowStep(BaseModel):
             print(f"input  found {name}")
             return self._inputs[name]
 
+
+    def serialize_value(self, input):
+        if input.type == CWLTypes.DIRECTORY:
+            return {"class": "Directory", "location": Path(input.value).as_posix()}
+        else:
+            return input.value
+
+
     def save_config(self, path = Path()) -> Path:
         """Save the workflow configuration."""
-        config = {input.id: input.value for input in self.in_ if input.value}
+        config = {input.id: self.serialize_value(input) for input in self.in_ if input.value}
         
         #TODO same code as process.save() so factor
         path = path.resolve()
@@ -748,6 +756,29 @@ class  WorkflowBuilder():
                 # Only create workflows inputs and connect to them them
                 # if step inputs are not already connected to another step output.
                 if input.source == 'UNSET':
+                    # if a step input is also a step output,
+                    # and this step output is the source of another step inputs,
+                    # then we also ignore it.
+                    if input.id in step._outputs:
+                        _step_id = step.id
+                        _same_name_output = step._outputs[input.id]
+                        _ref = _step_id + "/" + _same_name_output.id
+                        for _other_step in kwds.get("steps"):
+                            for _input in _other_step.in_:
+                                if _input.source == _ref:
+                                    if _input.type != CWLTypes.DIRECTORY:
+                                        # CHECK probably untrue, what about files, array of files etc...
+                                        raise Exception("should only be directory here!")
+                                    else:
+                                        # TODO the last thing to do is to create a random input value (or follow some convention
+                                        #for it) that we can pass to the source workflow input.
+                                        input.value = Path() / "RANDOMDIR"
+                                        # TODO temp hack for running those workflows,
+                                        # figure out how to tell cwl to create the directories first
+                                        # something about listing files or something
+                                        input.value.mkdir(exist_ok=True)
+
+                    
                     # TODO create method, we could also wrap CWLTypes in a pydantic model
                     input_type = input.type
                     # TODO Remove once we fix type system.

@@ -43,10 +43,9 @@ if __name__ == "__main__":
     # For each step output, check if we have corresponding input and remove 
     # this input.
     wf.wf_image_processing___step_OmeConverter___outDir = OUTPUT_DIR
-    wf.wf_image_processing___step_BbbcDownload___outDir = OUTPUT_DIR
 
     # TODO also a bug in config, we need to serialize File and Directory properly!
     config = wf.save_config()
-    config = Path("") / "ref_step_wf_image_processing.yaml"
+    # config = Path("") / "ref_step_wf_image_processing.yaml"
 
-    #run_cwl(Path(f"{workflow.name}.cwl"), config_file=config)
+    run_cwl(Path(f"{workflow.name}.cwl"), config_file=config)
