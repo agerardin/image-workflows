@@ -33,7 +33,7 @@ notebooks/=4.18.0
 wic-api-v2/**/*.gv
 wic-api-v2/**/*.png
 outdir
-
+out
 
 # temp for poc
 wf3.cwl

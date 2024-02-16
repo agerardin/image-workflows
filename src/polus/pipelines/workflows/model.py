@@ -592,9 +592,9 @@ class CommandLineTool(Process):
     """Represent a CommandLineTool.
     """
     model_config = ConfigDict(extra='ignore')
-    baseCommand: str
     inputs: list[CommandInputParameter]
     outputs: list[CommandOutputParameter]
+    baseCommand: Optional[str] = None
     stdout: Optional[str] = None
 
     # TODO CHECK move those to process most likely
