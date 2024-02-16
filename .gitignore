@@ -42,4 +42,7 @@ echo_string.cwl
 subworkflow1.cwl
 wf4.cwl
 *back.cwl
-wf*.cwl
+/wf*.cwl
+/workflow*.cwl
+/step*.yaml
+/TEST_*

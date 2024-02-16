@@ -88,7 +88,7 @@ def test_workflow_builder_with_subworkflows(test_data_dir: Path, clts: list[str]
     step4 = step_builder()
     print(main_wf)
 
-    step4.wf4___step_wf3___wf3___step_echo_string___message = "ok"
+    step4.wf4___step_wf3___wf3___step_echo_string___message = "test_message"
     config = step4.save_config()
 
     run_cwl(Path()/f"{main_wf.name}.cwl", config_file=config)

@@ -14,7 +14,10 @@ from rich import print
 from urllib.parse import unquote, urlparse
 from enum import Enum
 
+
 class CWLTypes(str, Enum):
+    """CWL basic types."""
+
     NULL = "null"
     BOOLEAN = "boolean"
     INT = "int"
@@ -25,45 +28,68 @@ class CWLTypes(str, Enum):
     FILE = "File"
     DIRECTORY = "Directory"
 
-    def isValidType(self, type):
+    def isValidType(self, value: Any):
+        """Check the python variable type can be assigned to this cwl type."""
         if self == CWLTypes.STRING:
-            return isinstance(type, str)
+            return isinstance(value, str)
         elif self == CWLTypes.INT or self == CWLTypes.LONG:
-            return isinstance(type, int)
+            return isinstance(value, int)
         elif self == CWLTypes.FLOAT or self == CWLTypes.DOUBLE:
-            return isinstance(type, float)
+            return isinstance(value, float)
         elif self == CWLTypes.FILE or self == CWLTypes.DIRECTORY:
-            return isinstance(type,Path)
+            return isinstance(value,Path)
 
-# TODO CHECK could we get Array of Array?
-# Ex: scattering a step with a CWLArray input?
-# CWL Standard mentioned something about nested arrays.
+
+# TODO FIX 
+# per https://www.commonwl.org/v1.2/Workflow.html#InputArraySchema
+# we can have nested arrays at any level.
+# For now we only handle array of base types.
 class CWLArray(BaseModel):
+    """Array of elements of base types."""
+
     items: CWLTypes
 
-    def isValidType(self, type):
-        return isinstance(type, list)
+    #TODO CHECK Python raw type is correct
+    def isValidType(self, value : Any):
+        """Check the python variable type can be assigned to this cwl type."""
+        return isinstance(value, list)
 
-def validate_file(file_path : Path):
-    file_path = file_path.resolve()
-    if not file_path.exists():
+
+def file_exists(path : Path):
+    """Check we have a file a disk."""
+    path = path.resolve()
+    if not path.exists():
         raise FileNotFoundError
-    if not file_path.is_file():
-        raise NotAFileError()
-    return file_path
+    if not path.is_file():
+        raise NotAFileError(path)
+    return path
+
 
 class NotAFileError(Exception):
-    pass
+    """Raised if path is not a file."""
+    def __init__(self, path):
+        super().__init__(f"{path} is not a file.")
+
 
 class IncompatibleTypeError(Exception):
-    pass
+    """Raised if types are incompatible."""
+    def __init__(self, type1, type2):
+        super().__init__(f"{type1} != {type2}")
+
+
+class IncompatibleValueError(Exception):
+    """Raised if value cannot be assigned to a type."""
+    def __init__(self, io_id, type, value):
+        super().__init__(f"Cannot assign {value} to {io_id} of type {type}") 
+
 
 def validProcessId(id):
+    """Check the process id (which is an uri) points to an existing file on disk."""
     # TODO need to figure out how to deal with from_builder=True
     # where file is not yet created.
     # try:
     #     path = Path(unquote(urlparse(id).path))
-    #     path = validate_file(path)
+    #     path = file_exists(path)
     # except Exception:
     #     print(id)
     #     raise Exception
@@ -71,44 +97,71 @@ def validProcessId(id):
     return id
     
 
+"""
+ProcessId needs to points to an existing file on disk
+in order to be pulled in a Workflow definition.
+However, when we first instantiated a newly buildworkfow, the 
+files does not yet exists on disk.
+"""
 ProcessId = Annotated[str, AfterValidator(validProcessId)]
 
 class ProcessRequirement(BaseModel):
+    """Base class for all process requirements."""
     model_config = ConfigDict(populate_by_name=True)
 
 class SubworkflowFeatureRequirement(ProcessRequirement):
+    """Needed if a Workflow references other Workflows."""
     class_: Optional[str] = Field("SubworkflowFeatureRequirement", alias='class')
 
 class SoftwareRequirement(ProcessRequirement):
-    pass
+    """Software requirements. """
+    NotImplemented
 
 class DockerRequirement(ProcessRequirement):
-    pass 
+    """Docker requirements. """
+    NotImplemented 
 
+# TODO Probably unecessary
 class InputBinding(BaseModel):
+    """Base class for any Input Binding."""
     pass
 
-# TODO CHANGE for now stick to cwl_parser
+# TODO CHANGE name. For now stick to cwl_parser naming
 # but should be CLTInputBinding
 class CommandLineBinding(InputBinding, extra='ignore'):
+    """Describe how to translate the input parameter to a
+    program argument.
+    """
+    # TODO Capture other missing attributes.
     position: Optional[int] = None
 
-# TODO CHANGE for now stick to cwl_parser
+# TODO CHANGE name. For now stick to cwl_parser naming
 # but should be CLTOutputBinding
-
 class CommandOutputBinding(BaseModel):
+    """Describe how to translate the wrapped program result
+    into a an output parameter.
+    """
     glob: Optional[str] = None
     loadContents: Optional[bool] = None
     outputEval: Optional[str] = None
 
+# TODO CHECK maybe add checks for ParameterIds
 ParameterId = Annotated[str,[]]
+
 class Parameter(BaseModel):
+    """
+    Base representation of any parameters.
+    Every parameter must have an id and a type.
+    """
     id: ParameterId
     type: Union[CWLTypes,CWLArray]
 
+    # TODO TEST and FIX.
+    # This needs to be recursively parsing nested structures.
     @field_validator("type", mode="before")
     @classmethod
     def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
+        """Ingest any python type an transform it into a valid CWLType."""
         if isinstance(type, dict):
             return CWLArray(**type)
         if isinstance(type, list):
@@ -116,11 +169,13 @@ class Parameter(BaseModel):
                 # TODO CHECK what to do with unset optional
                 return
             else:
+                # TODO CHECK can we get other kind of list?
                 raise NotImplementedError
         return CWLTypes(type)
 
     @field_serializer('type', when_used='always')
     def serialize_type(type: Union[CWLTypes,CWLArray]):
+        """Define rules to serialize parameter types."""
         if isinstance(type, CWLTypes):
             serialized_type = type.value
         elif isinstance(type, CWLArray):
@@ -131,38 +186,66 @@ class Parameter(BaseModel):
         return serialized_type
 
 class InputParameter(Parameter):
+    """Base class of any input parameter."""
     pass
 
 class OutputParameter(Parameter):
+    """Base class of any input parameter."""
     pass
 
 
 class WorkflowInputParameter(InputParameter):
+    """Workflow input parameters define how what inputs
+    to provide to execute a workflow."""
     # TODO CHECK for now, rely on step logic to generate config
     #  we may revisit later
     # value:Optional[Any] = Field(None, exclude=True)
     pass
 
 class WorkflowOutputParameter(OutputParameter):
+    """Workflow output parameters define how to collect
+    the outputs of a workflow.
+    Args:
+    - outputSource: ref to the WorkflowStepOutput 
+    this workflow output is linked to.
+    """
+    # TODO CHECK maybe add additional constraints?
     outputSource: str
 
 class CommandInputParameter(InputParameter):
+    """Command Line Tool input parameter.
+    """
     inputBinding: Optional[CommandLineBinding] = None
 
 
 class CommandOutputParameter(OutputParameter):
+    """Command Line Tool output parameter.
+    """
     outputBinding: Optional[CommandOutputBinding] = None
 
+# TODO CHECK if we need extra validation.
 StepInputId = Annotated[str,[]]
+
 class WorkflowStepInput(BaseModel):
+    """A WorkflowStepInput describes how to provide
+    an input to a workflow step.
+
+    It provides a ref to a workflow input or another step output.
+    """
     id: StepInputId
-    source: str
+    source: str #TODO CHECK add typing for extra check if necessary.
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
+    """This a special kind of WorkflowStepInput that can
+    be dynamically assign a value or link to another workflow input 
+    or step output.
+    """
     type: Union[CWLTypes,CWLArray] = Field(exclude=True)
     value: None
     step_id: str = None
 
+    # TODO we also do the type checking here because type is a union
+    # transform type to a base model so we can factor this code everywhere.
     @field_validator("type", mode="before")
     @classmethod
     def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
@@ -188,32 +271,46 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
 
     # TODO CHECK we could use pydantic model instead
     def set_value(self, value: Any):
+        """Assign a value to this step input or link it to another
+        step output.
+        """
         if isinstance(value, AssignableWorkflowStepOutput):
             if(self.type != value.type):
-                raise IncompatibleTypeError(f"{self.type} != {value.type}")
+                raise IncompatibleTypeError(self.type, value.type)
             # TODO create a function for that
             self.source = value.step_id + "/" + value.id
         elif value is not None:
             if not self.type.isValidType(value):
-                raise IncompatibleTypeError(f"Cannot assign {value} to {self.id} of type {self.type}")
+                raise IncompatibleValueError(self.id, self.type, value)
         else:
-            # TODO remove once done
+            # TODO remove when poc is completed.
             raise NotImplementedError("this case is not properly handled.")
         self.value = value
 
 class WorkflowStepOutput(BaseModel):
+    """WorkflowStepOuput define the name of a step output
+    that can be used to reference it in another step input or a workflow output.
+    """
     id: str
 
 def convert_to_string(value: Any, handler) -> str:
     return value.id
 
+"""WorkflowStepOutput are represented as string so we wrap the pydantic model to hide
+from the callers.
+"""
 WorkflowStepOutputId = Annotated[WorkflowStepOutput, WrapSerializer(convert_to_string)]
 
 class AssignableWorkflowStepOutput(WorkflowStepOutput):
+    """This a special kind of WorkflowStepOutput that can
+    be dynamically link to another step input.
+    """
     type: Union[CWLTypes,CWLArray] = Field(exclude=True)
     value: str = None
     step_id: str = None
 
+    # TODO third time we need to do the same validation.
+    # Need to factor that code otherwise bugs will creep in.
     @field_validator("type", mode="before")
     @classmethod
     def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
@@ -240,6 +337,17 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
 WorkflowStepId = Annotated[str,[]]
 
 class WorkflowStep(BaseModel):
+    """Capture a workflow step.
+    
+    A workflow step has an id so it can be referenced by other steps,
+    or workflow ios.
+    It has a list of inputs whose ids correspond to the process input ids they 
+    are wrapping and describe to which workflow input/step output the connect.
+    It has a list of outputs whose ids correspond to the process output ids they
+    are wrapping and describe to  which workflow output they connect.
+    """
+
+    # needed because of the reserved `in` keyword used in the model.
     model_config = ConfigDict(populate_by_name=True)
     
     id: WorkflowStepId
@@ -247,8 +355,10 @@ class WorkflowStep(BaseModel):
     in_: list[WorkflowStepInput] = Field(..., alias='in')
     out: list[WorkflowStepOutputId]
     # TODO CHECK if we can type it to StepInputId
-    scatter: Optional[list[str]] = Field(None)
-    when: Optional[str] = Field(None)
+    scatter: Optional[list[str]] = Field(None) # ref to scatter inputs
+    when: Optional[str] = Field(None) # ref to conditional execution clauses
+
+    # TODO CHECK we may remove that later
     from_builder: Optional[bool] = Field(False, exclude=True)
 
 
@@ -260,7 +370,11 @@ class WorkflowStep(BaseModel):
         res = [{"id": wf_step_output} for wf_step_output in out]
         return res
     
+    # TODO this could be move to the CWLModel pydantic model once we have it.
     def promote_cwl_type(self, type: CWLTypes):
+        """When scattering over some inputs, we will provide arrays of value of the
+        original types.
+        """
         if isinstance(type, CWLArray):
             #TODO FIX
             raise NotImplementedError("scattering CWLArray is not yet implemented.")
@@ -271,6 +385,14 @@ class WorkflowStep(BaseModel):
     def set_mutable_ios(self,
                         inputs: list[dict],
                         outputs: list[dict]):
+        """A step can be used as a building block for creating a workflow.
+        
+        When used as such, we enable step inputs/outputs to be linked with other
+        steps or workflows inputs/outputs, or to assign its step some value.
+        Links will be used to generate the final workflow definitions.
+        Values are captured and can be stored in a config file that can be then 
+        submitted along the workflow specification for execution.
+        """
         # TODO CHECK For now recreate assignable model.
         # Let's make sure it is the best solution.
         inputs = {input["id"]:input for input in inputs}
@@ -318,6 +440,7 @@ class WorkflowStep(BaseModel):
         self._outputs = _outputs
 
     def __setattr__(self, name: str, value: Any) -> None:
+        """This is enabling assignment in our python DSL."""
         if name in [
                     "in_",
                     "_inputs",
@@ -336,8 +459,8 @@ class WorkflowStep(BaseModel):
             raise AttributeError(f"undefined attribute {name}")
 
     def __getattr__(self, name: str) -> Any:
-        
-        # TODO CHECK Note there is an ordering issues
+        """This is enabling assignment in our python DSL."""
+        # TODO CHECK Note there is an ordering issues here
         # if we ever need to check inputs because 
         # a input and an output can have the same name!
         # NOTE we could disambiguate in from out if necessary
@@ -354,6 +477,7 @@ class WorkflowStep(BaseModel):
             return self._inputs[name]
 
     def save_config(self, path = Path()) -> Path:
+        """Save the workflow configuration."""
         config = {input.id: input.value for input in self.in_ if input.value}
         
         #TODO same code as process.save() so factor
@@ -372,6 +496,11 @@ class WorkflowStep(BaseModel):
     
 
 class Process(BaseModel):
+    """Process is the base class for Workflows,CommandLineTools
+    (and also Expression Tools and Operations).
+
+    see (https://www.commonwl.org/user_guide/introduction/basic-concepts.html)
+    """
     model_config = ConfigDict(populate_by_name=True)
     
     id: ProcessId
@@ -381,6 +510,7 @@ class Process(BaseModel):
     @computed_field
     @property
     def name(self) -> str:
+        """Generate a name from the id for convenience purpose."""
         # TODO CHECK this works for any allowable CLT
         name = Path(self.id).stem
         return name
@@ -411,23 +541,35 @@ class Process(BaseModel):
     # load() should be defined by subclass but declared here.
 
 class Workflow(Process):
+    """Represents a CWL Workflow.
+    
+    Workflows are represented by inputs outputs and a list of steps.
+    """
+
     inputs: list[WorkflowInputParameter]
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
+    # TODO CHECK which can be factor in process?
     requirements: Optional[list[dict[str, object]]] = []
     from_builder: Optional[bool] = Field(False, exclude=True)
     # TODO CHECK if we can factor in process
     class_: Optional[str] = Field(alias='class', default='Workflow')
+    
+    # TODO extract version from the definition instead.
+    # decide if we want to accomodate different versions
+    # or reject <1.2 altogether
     cwlVersion: str = "v1.2"
 
     # TODO CHECK should factor that too
     @property
     def _inputs(self) -> dict[ParameterId, WorkflowInputParameter]:
+        """internal index to retrieve inputs efficiently."""
         return {input.id: input for input in self.inputs}
 
     # TODO CHECK should factor that too
     @property
     def _outputs(self) -> dict[ParameterId, WorkflowOutputParameter]:
+        """internal index to retrieve outputs efficiently."""
         return {output.id: output for output in self.outputs}
 
     # TODO See comment on CommandLineTool.load
@@ -437,7 +579,7 @@ class Workflow(Process):
         
         We use the reference cwl parser to get a standardized description.
         """
-        clt_file = validate_file(clt_file)
+        clt_file = file_exists(clt_file)
         cwl_clt = cwl_parser.load_document_by_uri(clt_file)
         # TODO CHECK save rewrite ids and runs ref.
         # Make sure this is not an issue.
@@ -447,22 +589,28 @@ class Workflow(Process):
         return cls(**yaml_clt) 
 
 class CommandLineTool(Process):
+    """Represent a CommandLineTool.
+    """
     model_config = ConfigDict(extra='ignore')
     baseCommand: str
     inputs: list[CommandInputParameter]
     outputs: list[CommandOutputParameter]
-    class_: Optional[str] = Field(..., alias='class') 
-    cwlVersion: Optional[str] = "v1.2"
     stdout: Optional[str] = None
+
+    # TODO CHECK move those to process most likely
+    cwlVersion: Optional[str] = "v1.2"
+    class_: Optional[str] = Field(..., alias='class') 
     doc: Optional[str] = ""
     label: Optional[str] = ""
 
     @property
     def _inputs(self) -> dict[ParameterId, CommandInputParameter]:
+        """internal index to retrieve inputs efficiently."""
         return {input.id: input for input in self.inputs}
 
     @property
     def _outputs(self) -> dict[ParameterId, CommandOutputParameter]:
+        """internal index to retrieve outputs efficiently."""
         return {output.id: output for output in self.outputs}
 
     # TODO either check type is commandLine
@@ -474,25 +622,30 @@ class CommandLineTool(Process):
         
         We use the reference cwl parser to get a standardized description.
         """
-        clt_file = validate_file(clt_file)
+        clt_file = file_exists(clt_file)
         cwl_clt = cwl_parser.load_document_by_uri(clt_file)
         yaml_clt = cwl_parser.save(cwl_clt)
         return cls(**yaml_clt) 
 
 class ExpressionTool:
-    pass
+    NotImplemented
 
 class Operation:
-    pass
+    NotImplemented
 
 class StepBuilder():
     """Create a workflow step.
     
-    Create a WorkflowStep from a CommandLineTool.
+    Create a WorkflowStep from a Process.
     For each input/output of the clt, a corresponding step in/out is created.
     """
 
-    def __init__(self, process : Process, scatter : list[str] = None, when: str = None, add_inputs: list[dict] = None, when_input_names: list[str] = None):
+    def __init__(self, process : Process,
+                 scatter : list[str] = None,
+                 when: str = None,
+                 add_inputs: list[dict] = None,
+                 when_input_names: list[str] = None):
+        
         # Generate a step id from the clt name
         id = "step_"+ process.name
         run = process.id
@@ -505,15 +658,12 @@ class StepBuilder():
         # Generate additional inputs.
         # For example,if the conditional clause contains unknown inputs.
         # It could also be to generate fake inputs for wic compatibility.
-        # TODO REVISIT that later after some use.
-        
+        # TODO REVISIT that later after some use.        
+        _add_inputs_ids = set([input["id"] for input in add_inputs]) if add_inputs else set()
 
         # input referenced in the when clause may or may not be already declared if the process.
         # If not, user must provide a description of it.
         # TODO we could evaluate the clause rather than having the user declare explicitly.
-        
-        _add_inputs_ids = set([input["id"] for input in add_inputs]) if add_inputs else set()
-
         if when:
             if not when_input_names:
                 raise Exception("You need to specify which inputs are referenced in the when clause.")
@@ -548,12 +698,13 @@ class StepBuilder():
 
 
     def __call__(self) -> WorkflowStep:
+        """"Returns the fully constructed WorkflowStep."""
         return self.step
 
 class  WorkflowBuilder():
     """Builder for a workflow object.
     
-    Enable iteratively to create a workflow.
+    Enable creating workflow dynamically.
     """
     def __init__(self, id: str, *args: Any, **kwds: Any):
         kwds.setdefault("steps", [])
@@ -613,6 +764,13 @@ class  WorkflowBuilder():
             else:
                 raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
 
+            # TODO CHECK we can probably revisit and do this a bit differently.
+            # The CWL standards allow us to do shallow validation.
+            # Now we can also recursively check before execution that all connections
+            # are indeed valid.
+            # At the very least, in the current usage of compute for example, we need 
+            # to ship every cwl we are referencing so we will need at a minimum to collect
+            # all cwl files beforehand.
 
             ## TODO That is where a context of loaded CLTs could be helpful.
             ## So we don't keep reloading the same models.
@@ -663,13 +821,11 @@ class  WorkflowBuilder():
         self.workflow = Workflow(**kwds, from_builder=True)
 
     def __call__(self) -> Any:
-        # NOTE this is probably a temporary workaround, but 
+        """Save the workflow description and return the workflow object."""
+        # NOTE this could be revisited, but 
         # we need to be able to load the original cwl when creating subworkflows.
         # TODO IMPLEMENT we could also accept a context object containing models of 
         # clts and workflows.
         self.workflow.save()
         return self.workflow
-
-    def step():
-        raise NotImplemented
 

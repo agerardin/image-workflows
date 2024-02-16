@@ -157,9 +157,9 @@ def test_run_scatter_wf_with_config(test_data_dir: Path,
     wf = __test_build_scatter_wf(test_data_dir, tmp_dir, clt_files)
     step_builder = StepBuilder(wf)
     wf_step = step_builder()
-    wf_step.in_[0] = ["ok"]
+    wf_step.in_[0] = ["test_message"]
 
-    assert wf.inputs[0].value == "ok"
+    assert wf.inputs[0].value == "test_message"
     config = wf_step.save_config()
 
     run_cwl(Path()/f"{wf.name}.cwl", config_file=config)

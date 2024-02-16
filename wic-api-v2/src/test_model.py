@@ -78,7 +78,7 @@ step_builder = StepBuilder(echo)
 step1 = step_builder()
 print(step1)
 
-step1.message = "ok"
+step1.message = "test_message"
 
 print(step1)
 
@@ -131,7 +131,7 @@ print("--------------")
 
 print(wf4)
 
-step4.wf4___step_wf3___wf3___step_echo_string___message = "ok"
+step4.wf4___step_wf3___wf3___step_echo_string___message = "test_message"
 step4.save_config()
 
 

@@ -98,7 +98,7 @@ def _build_conditional_workflow(test_data_dir, clts, workflows):
     step2.touchfiles = step1.uppercase_message
 
 
-    wf_builder = WorkflowBuilder("conditional_workflow_generated", steps=steps)
+    wf_builder = WorkflowBuilder("workflow_conditional", steps=steps)
     wf: Workflow = wf_builder()
     return wf
 
