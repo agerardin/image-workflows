@@ -410,6 +410,7 @@ class WorkflowStep(BaseModel):
 
             print(f"!!!!!! {in_type}")
             values = step_in.model_dump()
+
             assignable_in = AssignableWorkflowStepInput(
                 **values,
                 value=None,
@@ -694,7 +695,18 @@ class StepBuilder():
         # But we have to make sure it works when loading plain cwl files.
         outputs = [{"id":output.id, "type":output.type} for output in process.outputs]
 
-        self.step.set_mutable_ios(inputs, outputs)    
+        self.step.set_mutable_ios(inputs, outputs) 
+
+        # For a workflow, bubble up values assigned to its steps.
+        # The become values of the workflow inputs.
+        if isinstance(process, Workflow):
+            for step in process.steps:
+                for input in step.in_:
+                    if input.source in self.step._inputs:
+                        self.step._inputs[input.source].value = input.value
+                        assignable_step_input = self.step._inputs[input.source]
+                        print(assignable_step_input)
+
 
 
     def __call__(self) -> WorkflowStep:
@@ -733,17 +745,23 @@ class  WorkflowBuilder():
             if not not step.when:
                 inlineJavascriptRequirement = True
             for input in step.in_:
+                # Only create workflows inputs and connect to them them
+                # if step inputs are not already connected to another step output.
                 if input.source == 'UNSET':
                     # TODO create method, we could also wrap CWLTypes in a pydantic model
                     input_type = input.type
+                    # TODO Remove once we fix type system.
                     input_type = input_type.model_dump() if isinstance(input_type, CWLArray) else input_type.value
                     workflow_input_id = generate_workflow_io_id(id, step.id, input.id)
-                    workflow_input = {"id": workflow_input_id,"type":input_type}
+                    workflow_input = { "id": workflow_input_id, "type":input_type }
                     input.source = workflow_input_id
                     workflow_inputs.append(workflow_input)
 
+
+
             for output in step.out:
                     output_type = output.type
+                    # TODO CHANGE that once we have review the type system.
                     output_type = output_type.model_dump() if isinstance(output_type, CWLArray) else output_type.value
                     workflow_output_id = generate_workflow_io_id(id, step.id, output.id)
                     workflow_output = {"id": workflow_output_id,
