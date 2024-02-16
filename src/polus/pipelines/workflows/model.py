@@ -59,7 +59,7 @@ def file_exists(path : Path):
     """Check we have a file a disk."""
     path = path.resolve()
     if not path.exists():
-        raise FileNotFoundError
+        raise FileNotFoundError(f"{path} does not exists.")
     if not path.is_file():
         raise NotAFileError(path)
     return path

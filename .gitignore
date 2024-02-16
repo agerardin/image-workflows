@@ -39,13 +39,10 @@ outdir
 out
 
 # temp for poc
-wf3.cwl
-workflow7.cwl
-echo_string.cwl
-subworkflow1.cwl
-wf4.cwl
 *back.cwl
 /wf*.cwl
 /workflow*.cwl
 /step*.yaml
 /TEST_*
+/echo_string.cwl
+/subworkflow1.cwl
