@@ -67,13 +67,6 @@ if __name__ == "__main__":
     # Now the workflow can be configured. We could hide that from the user.
     wf : Workflow = StepBuilder(workflow)()
 
-    wf.wf_image_processing___step_BbbcDownload___outDir = Path("inpDirFileRenaming")
-    wf.wf_image_processing___step_FileRenaming___outDir = Path("inpDirOmeConverter")
-    wf.wf_image_processing___step_OmeConverter___outDir = Path("inpDirMontage")
-    wf.wf_image_processing___step_Montage___outDir = Path("stitchPathImageAssembler")
-    wf.wf_image_processing___step_ImageAssembler___outDir= Path("inpDirPrecomputeSlide")
-    # TODO also a bug in config, we need to serialize File and Directory properly!
     config = wf.save_config()
-    # config = Path("") / "ref_step_wf_image_processing.yaml"
 
     run_cwl(Path(f"{workflow.name}.cwl"), config_file=config)

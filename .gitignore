@@ -52,7 +52,10 @@ inpDirFileRenaming/
 inpDirMontage/
 inpDirOmeConverter/
 inpDirPrecomputeSlide/
-polus-pipelines/
-step_BbbcDownload/
-step_FileRenaming/
 stitchPathImageAssembler/
+
+step_BbbcDownload__outDir/
+step_FileRenaming__outDir/
+step_ImageAssembler__outDir/
+step_Montage__outDir/
+step_OmeConverter__outDir/
