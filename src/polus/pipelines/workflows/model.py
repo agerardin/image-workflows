@@ -197,7 +197,9 @@ class Parameter(BaseModel):
             serialized_type = type.value
         elif isinstance(type, CWLArray):
             # TODO maybe switch to standard form instead
-            serialized_type = f"{type.items.value}[]"
+            # serialized_type = f"{type.items.value}[]"
+            # TODO CHECK THAT 
+            serialized_type = {"items": type.items.value}
         else:
             raise NotImplementedError(f"No support for type : {type}")
         return serialized_type
@@ -259,6 +261,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
     """
     type: Union[CWLTypes,CWLArray] = Field(exclude=True)
     value: None
+    optional: bool = Field(exclude= True)
     step_id: str = None
 
     # TODO we also do the type checking here because type is a union
@@ -378,6 +381,12 @@ class WorkflowStep(BaseModel):
     # TODO CHECK we may remove that later
     from_builder: Optional[bool] = Field(False, exclude=True)
 
+    # TODO CHECK again that logic
+    @field_serializer('in_', when_used='always')
+    def serialize_required(in_: list[WorkflowStepInput]):
+        # REMOVE optional step input with no value set
+        in_ = [input for input in in_ if input.source != "UNSET" ]
+        return [input.model_dump() for input in in_]
 
     @field_validator("out", mode="before")
     # type: ignore
@@ -419,19 +428,20 @@ class WorkflowStep(BaseModel):
         _inputs = {}
         for step_in in self.in_:
             process_input = inputs[step_in.id]
-            # TODO change when we have a model
+            # TODO change when we have a model. This is bug prone.
             in_type = process_input["type"]
+            optional = process_input["optional"]
             if self.scatter:
                 if step_in.id in self.scatter:
                     in_type = self.promote_cwl_type(in_type)
 
-            print(f"!!!!!! {in_type}")
             values = step_in.model_dump()
 
             assignable_in = AssignableWorkflowStepInput(
                 **values,
                 value=None,
                 type=in_type,
+                optional=optional,
                 step_id=self.id
                 )
             assignable_ins.append(assignable_in)
@@ -683,7 +693,11 @@ class StepBuilder():
         run = process.id
 
         # TODO change. For now set source to "UNSET"
-        inputs = [{"id":input.id, "source":"UNSET", "type": input.type}
+        inputs = [{"id":input.id,
+                   "source":"UNSET",
+                   "type": input.type,
+                   "optional": input.optional
+                   }
                   for input in process.inputs]
         outputs = [output.id for output in process.outputs]
         
@@ -708,7 +722,10 @@ class StepBuilder():
         
         if add_inputs:
             # TODO refactor : same model use twice
-            inputs = inputs + [{"id":input["id"], "source":"UNSET", "type": input["type"]}
+            inputs = inputs + [{"id":input["id"], 
+                                "source":"UNSET", 
+                                "type": input["type"],
+                                "optional": input["optional"]}
                 for input in add_inputs]
             
         self.step = WorkflowStep(
@@ -724,7 +741,9 @@ class StepBuilder():
         # TODO update pydantic to consume this model
         # rather than having to generate string, then type?
         # But we have to make sure it works when loading plain cwl files.
-        outputs = [{"id":output.id, "type":output.type} for output in process.outputs]
+        outputs = [{"id":output.id, 
+                    "type":output.type
+                    } for output in process.outputs]
 
         self.step.set_mutable_ios(inputs, outputs) 
 
@@ -778,7 +797,12 @@ class  WorkflowBuilder():
             for input in step.in_:
                 # Only create workflows inputs and connect to them them
                 # if step inputs are not already connected to another step output.
+                # TODO switch to continue logic
                 if input.source == 'UNSET':
+
+                    # Ignore unset optional inputs
+                    if input.optional and input.value is None:
+                        continue
 
                     # if a step input is also a step output,
                     # and this step output is link to other step inputs,
