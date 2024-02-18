@@ -43,15 +43,15 @@ if __name__ == "__main__":
     montage.inpDir = ome_converter.outDir
     montage.filePattern = "d1_x00_y03_p{p:dd}_c0.ome.tif"
     montage.layout = "p"
-    montage.flipAxis = "[]"
-    montage.gridSpacing = "10"
-    montage.imageSpacing = '4'
+    # montage.flipAxis = "[]"
+    # montage.gridSpacing = "10"
+    # montage.imageSpacing = '4'
 
     # Image Assembler
     image_assembler.imgPath = ome_converter.outDir
     image_assembler.stitchPath = montage.outDir
-    image_assembler.preview = False
-    image_assembler.timesliceNaming = False
+    # image_assembler.preview = False
+    # image_assembler.timesliceNaming = False
 
     # # Precompute Slide
     precompute_slide.filePattern = ".*.ome.tif"

@@ -12,7 +12,7 @@ inputs:
   preview:
     inputBinding:
       prefix: --preview
-    type: boolean
+    type: boolean?
   stitchPath:
     inputBinding:
       prefix: --stitchPath
@@ -20,7 +20,7 @@ inputs:
   timesliceNaming:
     inputBinding:
       prefix: --timesliceNaming
-    type: boolean
+    type: boolean?
 outputs:
   outDir:
     outputBinding:

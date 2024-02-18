@@ -58,8 +58,6 @@ class CWLArray(BaseModel):
         """Check the python variable type can be assigned to this cwl type."""
         return isinstance(value, list)
 
-
-
 def file_exists(path : Path):
     """Check we have a file a disk."""
     path = path.resolve()
@@ -169,6 +167,11 @@ class Parameter(BaseModel):
     @classmethod
     def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
         """Ingest any python type an transform it into a valid CWLType."""
+        if isinstance(type, list):
+            if type[0] == 'null':
+                return cls.transform_type(type[1])
+            # TODO create an exception
+            raise Exception(f"Unexpected type {type}")
         if isinstance(type, dict):
             return CWLArray(**type)
         if isinstance(type, list):

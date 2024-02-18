@@ -4,11 +4,11 @@ inputs:
   filePattern:
     inputBinding:
       prefix: --filePattern
-    type: string
+    type: string?
   imageType:
     inputBinding:
       prefix: --imageType
-    type: string
+    type: string?
   inpDir:
     inputBinding:
       prefix: --inpDir

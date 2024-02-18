@@ -8,15 +8,15 @@ inputs:
   flipAxis:
     inputBinding:
       prefix: --flipAxis
-    type: string
+    type: string?
   gridSpacing:
     inputBinding:
       prefix: --gridSpacing
-    type: string
+    type: string?
   imageSpacing:
     inputBinding:
       prefix: --imageSpacing
-    type: string
+    type: string?
   inpDir:
     inputBinding:
       prefix: --inpDir
@@ -24,7 +24,7 @@ inputs:
   layout:
     inputBinding:
       prefix: --layout
-    type: string
+    type: string?
   outDir:
     inputBinding:
       prefix: --outDir
