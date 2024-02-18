@@ -12,7 +12,7 @@ inputs:
   mapDirectory:
     inputBinding:
       prefix: --mapDirectory
-    type: string?
+    type: string
   outDir:
     inputBinding:
       prefix: --outDir

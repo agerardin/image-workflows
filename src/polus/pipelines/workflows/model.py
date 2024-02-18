@@ -38,6 +38,10 @@ class CWLTypes(str, Enum):
             return isinstance(value, float)
         elif self == CWLTypes.FILE or self == CWLTypes.DIRECTORY:
             return isinstance(value,Path)
+        elif self == CWLTypes.BOOLEAN:
+            return isinstance(value, bool)
+        # default
+        return False
 
 
 # TODO FIX 
@@ -53,6 +57,7 @@ class CWLArray(BaseModel):
     def isValidType(self, value : Any):
         """Check the python variable type can be assigned to this cwl type."""
         return isinstance(value, list)
+
 
 
 def file_exists(path : Path):
@@ -154,6 +159,8 @@ class Parameter(BaseModel):
     Every parameter must have an id and a type.
     """
     id: ParameterId
+    # TODO FIX Parameter can also ['null', AnyCWLType]
+    # for optional parameter so fix that.
     type: Union[CWLTypes,CWLArray]
 
     # TODO TEST and FIX.
@@ -487,7 +494,7 @@ class WorkflowStep(BaseModel):
 
     def save_config(self, path = Path()) -> Path:
         """Save the workflow configuration."""
-        config = {input.id: self.serialize_value(input) for input in self.in_ if input.value}
+        config = {input.id: self.serialize_value(input) for input in self.in_ if input.value is not None}
         
         #TODO same code as process.save() so factor
         path = path.resolve()
@@ -758,25 +765,26 @@ class  WorkflowBuilder():
                 if input.source == 'UNSET':
                     # if a step input is also a step output,
                     # and this step output is the source of another step inputs,
-                    # then we also ignore it.
-                    if input.id in step._outputs:
-                        _step_id = step.id
-                        _same_name_output = step._outputs[input.id]
-                        _ref = _step_id + "/" + _same_name_output.id
-                        for _other_step in kwds.get("steps"):
-                            for _input in _other_step.in_:
-                                if _input.source == _ref:
-                                    if _input.type != CWLTypes.DIRECTORY:
-                                        # CHECK probably untrue, what about files, array of files etc...
-                                        raise Exception("should only be directory here!")
-                                    else:
-                                        # TODO the last thing to do is to create a random input value (or follow some convention
-                                        #for it) that we can pass to the source workflow input.
-                                        input.value = Path() / "RANDOMDIR"
-                                        # TODO temp hack for running those workflows,
-                                        # figure out how to tell cwl to create the directories first
-                                        # something about listing files or something
-                                        input.value.mkdir(exist_ok=True)
+                    # then we bubble up its value to the workflow input value.
+                    # if input.id in step._outputs:
+                    #     _step_id = step.id
+                    #     _same_name_output = step._outputs[input.id]
+                    #     _ref = _step_id + "/" + _same_name_output.id
+                    #     for _other_step in kwds.get("steps"):
+                    #         for _input in _other_step.in_:
+                    #             if _input.source == _ref:
+                    #                 if _input.type != CWLTypes.DIRECTORY:
+                    #                     # CHECK probably untrue, what about files, array of files etc...
+                    #                     raise Exception("should only be directory here!")
+                    #                 else:
+                    #                     # TODO the last thing to do is to create a random input value (or follow some convention
+                    #                     #for it) that we can pass to the source workflow input.
+                    #                     # TODO check this is what we want
+                    #                     input.value = Path() / _step_id
+                    #                     # # TODO temp hack for running those workflows,
+                    #                     # # figure out how to tell cwl to create the directories first
+                    #                     # # something about listing files or something
+                    #                     input.value.mkdir(parents=True, exist_ok=True)
 
                     
                     # TODO create method, we could also wrap CWLTypes in a pydantic model
@@ -787,8 +795,6 @@ class  WorkflowBuilder():
                     workflow_input = { "id": workflow_input_id, "type":input_type }
                     input.source = workflow_input_id
                     workflow_inputs.append(workflow_input)
-
-
 
             for output in step.out:
                     output_type = output.type

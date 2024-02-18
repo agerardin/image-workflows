@@ -46,3 +46,13 @@ out
 /TEST_*
 /echo_string.cwl
 /subworkflow1.cwl
+
+# temp demo image processing
+inpDirFileRenaming/
+inpDirMontage/
+inpDirOmeConverter/
+inpDirPrecomputeSlide/
+polus-pipelines/
+step_BbbcDownload/
+step_FileRenaming/
+stitchPathImageAssembler/
