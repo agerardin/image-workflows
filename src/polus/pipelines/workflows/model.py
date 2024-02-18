@@ -157,18 +157,25 @@ class Parameter(BaseModel):
     Every parameter must have an id and a type.
     """
     id: ParameterId
-    # TODO FIX Parameter can also ['null', AnyCWLType]
-    # for optional parameter so fix that.
+    optional: bool = Field(False, exclude=True)
     type: Union[CWLTypes,CWLArray]
+
+    # @field_validator("type", "optional", mode="before")
+    # @classmethod
+    # def transform_type(cls, type: Any, optional) -> Union[CWLTypes,CWLArray]:
 
     # TODO TEST and FIX.
     # This needs to be recursively parsing nested structures.
-    @field_validator("type", mode="before")
+    @field_validator("type", "optional", mode="before")
     @classmethod
-    def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
+    def transform_type(cls, type: Any, optional: Any = None) -> Union[CWLTypes,CWLArray]:
         """Ingest any python type an transform it into a valid CWLType."""
         if isinstance(type, list):
             if type[0] == 'null':
+                # TODO feels a bit hacky to modify the model this way.
+                # We could instead push that info in the type directly
+                # if CWLType becomes a pydantic model.
+                optional.data['optional'] = True
                 return cls.transform_type(type[1])
             # TODO create an exception
             raise Exception(f"Unexpected type {type}")
