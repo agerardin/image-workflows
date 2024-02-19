@@ -1,6 +1,6 @@
 from typing import Annotated, Union
 from pydantic import (
-    BaseModel, ConfigDict, Field, PrivateAttr, ValidationError,
+    BaseModel, ConfigDict, Field, PrivateAttr, SerializerFunctionWrapHandler, ValidationError,
     computed_field, validator, WrapSerializer, field_serializer
 )
 from pydantic.functional_validators import AfterValidator, field_validator
@@ -356,6 +356,13 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
 
 WorkflowStepId = Annotated[str,[]]
 
+def ser_wrap(v: Any, nxt: SerializerFunctionWrapHandler) -> str:
+    v = [input for input in v if input.source != "UNSET" ]
+    return nxt(v)
+
+WorkflowStepInputs = Annotated[list[WorkflowStepInput], WrapSerializer(ser_wrap)]
+
+
 class WorkflowStep(BaseModel):
     """Capture a workflow step.
     
@@ -369,10 +376,9 @@ class WorkflowStep(BaseModel):
 
     # needed because of the reserved `in` keyword used in the model.
     model_config = ConfigDict(populate_by_name=True)
-    
     id: WorkflowStepId
     run: str
-    in_: list[WorkflowStepInput] = Field(..., alias='in')
+    in_: WorkflowStepInputs = Field(..., alias='in')
     out: list[WorkflowStepOutputId]
     # TODO CHECK if we can type it to StepInputId
     scatter: Optional[list[str]] = Field(None) # ref to scatter inputs
@@ -380,13 +386,6 @@ class WorkflowStep(BaseModel):
 
     # TODO CHECK we may remove that later
     from_builder: Optional[bool] = Field(False, exclude=True)
-
-    # TODO CHECK again that logic
-    @field_serializer('in_', when_used='always')
-    def serialize_required(in_: list[WorkflowStepInput]):
-        # REMOVE optional step input with no value set
-        in_ = [input for input in in_ if input.source != "UNSET" ]
-        return [input.model_dump() for input in in_]
 
     @field_validator("out", mode="before")
     # type: ignore

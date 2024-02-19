@@ -30,3 +30,5 @@ requirements:
     - entry: $(inputs.outDir)
       writable: true
   InlineJavascriptRequirement: {}
+  NetworkAccess:
+    networkAccess: true
