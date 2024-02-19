@@ -58,8 +58,9 @@ class CWLArray(BaseModel):
         """Check the python variable type can be assigned to this cwl type."""
         return isinstance(value, list)
 
+
 def file_exists(path : Path):
-    """Check we have a file a disk."""
+    """Check we have a file a disk and return resolved."""
     path = path.resolve()
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exists.")
@@ -68,10 +69,29 @@ def file_exists(path : Path):
     return path
 
 
+def directory_exists(path: Path):
+    """Check the provided path is an existing directory.
+    
+    Returns: resolved path.
+    Raises: exception is not found or not a file.
+    """
+    path = path.resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exists.")
+    if not path.is_dir():
+        raise NotADirectoryError(path)
+    return path    
+
+
 class NotAFileError(Exception):
     """Raised if path is not a file."""
     def __init__(self, path):
         super().__init__(f"{path} is not a file.")
+
+class NotADirectoryError(Exception):
+    """Raised if path is not a file."""
+    def __init__(self, path):
+        super().__init__(f"{path} is not a directory.")
 
 
 class IncompatibleTypeError(Exception):
@@ -79,11 +99,16 @@ class IncompatibleTypeError(Exception):
     def __init__(self, type1, type2):
         super().__init__(f"{type1} != {type2}")
 
+class UnexpectedTypeError(Exception):
+    """Raised if type is not supported."""
+    def __init__(self, type):
+        super().__init__(f"unexpected type : {type}")
 
 class IncompatibleValueError(Exception):
     """Raised if value cannot be assigned to a type."""
     def __init__(self, io_id, type, value):
         super().__init__(f"Cannot assign {value} to {io_id} of type {type}") 
+
 
 
 def validProcessId(id):
@@ -124,7 +149,6 @@ class DockerRequirement(ProcessRequirement):
     """Docker requirements. """
     NotImplemented 
 
-# TODO Probably unecessary
 class InputBinding(BaseModel):
     """Base class for any Input Binding."""
     pass
@@ -155,40 +179,39 @@ class Parameter(BaseModel):
     """
     Base representation of any parameters.
     Every parameter must have an id and a type.
+    We also track if the parameter is optional or not
+    (CWL encodes this information in the type declaration)
     """
     id: ParameterId
     optional: bool = Field(False, exclude=True)
     type: Union[CWLTypes,CWLArray]
 
-    # @field_validator("type", "optional", mode="before")
-    # @classmethod
-    # def transform_type(cls, type: Any, optional) -> Union[CWLTypes,CWLArray]:
-
-    # TODO TEST and FIX.
+    # TODO TEST and FIX representation of cwl types.
     # This needs to be recursively parsing nested structures.
     @field_validator("type", "optional", mode="before")
     @classmethod
     def transform_type(cls, type: Any, optional: Any = None) -> Union[CWLTypes,CWLArray]:
         """Ingest any python type an transform it into a valid CWLType."""
         if isinstance(type, list):
+            # CHECK for optional types
             if type[0] == 'null':
                 # TODO feels a bit hacky to modify the model this way.
                 # We could instead push that info in the type directly
                 # if CWLType becomes a pydantic model.
                 optional.data['optional'] = True
                 return cls.transform_type(type[1])
-            # TODO create an exception
-            raise Exception(f"Unexpected type {type}")
+            raise UnexpectedTypeError({type})
         if isinstance(type, dict):
+            # TODO Test for arrays. Check if other representation are allowed.
             return CWLArray(**type)
-        if isinstance(type, list):
-            if type[0] == 'null':
-                # TODO CHECK what to do with unset optional
-                return
-            else:
-                # TODO CHECK can we get other kind of list?
-                raise NotImplementedError
-        return CWLTypes(type)
+        if isinstance(type, CWLTypes):
+            return type
+        else:
+            try:
+                return CWLTypes(type)
+            except:
+                raise UnexpectedTypeError({type})
+
 
     @field_serializer('type', when_used='always')
     def serialize_type(type: Union[CWLTypes,CWLArray]):
@@ -197,9 +220,9 @@ class Parameter(BaseModel):
             serialized_type = type.value
         elif isinstance(type, CWLArray):
             # TODO maybe switch to standard form instead
-            # serialized_type = f"{type.items.value}[]"
-            # TODO CHECK THAT 
-            serialized_type = {"items": type.items.value}
+            serialized_type = f"{type.items.value}[]"
+            # TODO CHECK apparently this is not allowed.
+            # serialized_type = {"items": type.items.value}
         else:
             raise NotImplementedError(f"No support for type : {type}")
         return serialized_type
@@ -356,11 +379,11 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
 
 WorkflowStepId = Annotated[str,[]]
 
-def ser_wrap(v: Any, nxt: SerializerFunctionWrapHandler) -> str:
-    v = [input for input in v if input.source != "UNSET" ]
-    return nxt(v)
+def filter_unused_optional(in_: Any, nxt: SerializerFunctionWrapHandler) -> str:
+    in_ = [input for input in in_ if input.source != "UNSET" ]
+    return nxt(in_)
 
-WorkflowStepInputs = Annotated[list[WorkflowStepInput], WrapSerializer(ser_wrap)]
+WorkflowStepInputs = Annotated[list[WorkflowStepInput], WrapSerializer(filter_unused_optional)]
 
 
 class WorkflowStep(BaseModel):
@@ -545,8 +568,6 @@ class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     id: ProcessId
-
-    # TODO can class attribute be declared there and overidden in subclasses?
 
     @computed_field
     @property
