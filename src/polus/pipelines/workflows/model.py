@@ -452,7 +452,15 @@ class WorkflowStep(BaseModel):
             process_input = inputs[step_in.id]
             # TODO change when we have a model. This is bug prone.
             in_type = process_input["type"]
-            optional = process_input["optional"]
+
+            # TODO REMOVE we should create a parse Parameter model
+            # rather than adhoc dictionaries.
+            # optional can be missing when parsing additional input
+            if "optional" in process_input:
+                optional = process_input["optional"]
+            else:
+                optional = False
+            
             if self.scatter:
                 if step_in.id in self.scatter:
                     in_type = self.promote_cwl_type(in_type)
@@ -742,10 +750,13 @@ class StepBuilder():
         
         if add_inputs:
             # TODO refactor : same model use twice
-            inputs = inputs + [{"id":input["id"], 
+            # TODO plus we should parse the model to extract
+            # optionalilty from the type.
+            inputs = inputs + [{
+                                "id":input["id"], 
                                 "source":"UNSET", 
-                                "type": input["type"],
-                                "optional": input["optional"]}
+                                "type": input["type"]
+                                }
                 for input in add_inputs]
             
         self.step = WorkflowStep(
@@ -772,10 +783,12 @@ class StepBuilder():
         if isinstance(process, Workflow):
             for step in process.steps:
                 for input in step.in_:
-                    if input.source in self.step._inputs:
-                        self.step._inputs[input.source].value = input.value
-                        assignable_step_input = self.step._inputs[input.source]
-                        print(assignable_step_input)
+                    # TODO maybe create a workflow subclass for assignable workflow instead?
+                    if isinstance(input, AssignableWorkflowStepInput):
+                        if input.source in self.step._inputs:
+                            self.step._inputs[input.source].value = input.value
+                            assignable_step_input = self.step._inputs[input.source]
+                            print(assignable_step_input)
 
 
 
