@@ -90,7 +90,6 @@ class NotADirectoryError(Exception):
     def __init__(self, path):
         super().__init__(f"{path} is not a directory.")
 
-
 class IncompatibleTypeError(Exception):
     """Raised if types are incompatible."""
     def __init__(self, type1, type2):
@@ -106,6 +105,9 @@ class IncompatibleValueError(Exception):
     def __init__(self, io_id, type, value):
         super().__init__(f"Cannot assign {value} to {io_id} of type {type}") 
 
+
+class CannotParseAdditionalInputParam(Exception):
+    pass
 
 
 def validProcessId(id):
@@ -759,6 +761,7 @@ class StepBuilder():
         step_id = "step_"+ process.name
         run = process.id
 
+        # TODO optional should be derived from type
         # TODO change. For now set source to "UNSET"
         inputs = [
             AssignableWorkflowStepInput(
@@ -781,8 +784,15 @@ class StepBuilder():
         # Generate additional inputs.
         # For example,if the conditional clause contains unknown inputs.
         # It could also be to generate fake inputs for wic compatibility.
-        # TODO REVISIT that later after some use.        
-        _add_inputs_ids = set([input["id"] for input in add_inputs]) if add_inputs else set()
+        # TODO REVISIT that later after some use.
+
+        # parse to workflow step input to detect basic problems early.
+        # 
+        if add_inputs:
+            try:
+                add_inputs = [WorkflowInputParameter(**input) for input in add_inputs]    
+            except:
+                raise CannotParseAdditionalInputParam("additional input description is invalid!")
 
         # input referenced in the when clause may or may not be already declared if the process.
         # If not, user must provide a description of it.
@@ -791,6 +801,7 @@ class StepBuilder():
             if not when_input_names:
                 raise Exception("You need to specify which inputs are referenced in the when clause.")
             
+            _add_inputs_ids = set([input.id for input in add_inputs]) if add_inputs else set()
             _process_inputs_ids = set([input.id for input in process.inputs])
             for when_input_name in when_input_names:
                 if not (when_input_name in _process_inputs_ids):
@@ -799,13 +810,14 @@ class StepBuilder():
         
         if add_inputs:
             inputs = inputs + [
+                # TODO optional should be derived from type
                 AssignableWorkflowStepInput(
                     id= input.id,
                     source= "UNSET",
                     type= input.type,
                     optional= input.optional,
                     step_id= step_id
-                )]
+                ) for input in add_inputs]
             
         self.step = WorkflowStep(
             scatter = scatter,
