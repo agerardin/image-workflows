@@ -7,7 +7,7 @@ from polus.pipelines.workflows import (
     run_cwl
 )
 from urllib.parse import urlparse
-from polus.pipelines.workflows.model import CWLArray, CWLTypes
+from polus.pipelines.workflows.model import CWLArray, CWLBasicType, CWLBasicTypeEnum, CWLType
 
 
 @pytest.mark.parametrize("filename", ["conditional-workflow.cwl"])
@@ -23,14 +23,14 @@ def test_load_conditional_wf(test_data_dir: Path, tmp_dir: Path, filename):
 
     wf_output = wf.outputs[0]
     assert isinstance(wf_output.type,CWLArray)
-    assert wf_output.type.items == CWLTypes.FILE
+    assert wf_output.type.items == CWLBasicType(type=CWLBasicTypeEnum.FILE)
 
     wf_input_msg = wf.inputs[0]
     assert isinstance(wf_input_msg.type,CWLArray)
-    assert wf_input_msg.type.items == CWLTypes.STRING
+    assert wf_input_msg.type.items == CWLBasicType(type=CWLBasicTypeEnum.STRING)
 
     wf_input_should_touch = wf.inputs[1]
-    assert wf_input_should_touch.type == CWLTypes.INT
+    assert wf_input_should_touch.type == CWLBasicType(type=CWLBasicTypeEnum.INT)
 
     # test last step has a when clause
     touch_step = wf.steps[-1]
@@ -64,7 +64,7 @@ def test_build_conditional_step(test_data_dir: Path,
 
     # Check this step input has the correct name and type.
     should_execute = [input for input in step.in_ if input.id == "should_execute"][0]
-    assert should_execute.type == CWLTypes.INT
+    assert should_execute.type == CWLBasicType(type=CWLBasicTypeEnum.INT)
 
 
 def _build_conditional_workflow(test_data_dir, clts, workflows):

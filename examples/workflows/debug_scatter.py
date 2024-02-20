@@ -6,7 +6,7 @@ from polus.pipelines.workflows import (
     run_cwl
 )
 from urllib.parse import urlparse
-from polus.pipelines.workflows.model import CWLTypes, CWLArray, CWLBasicTypeEnum, CWLBasicTypes
+from polus.pipelines.workflows.model import CWLType, CWLArray, CWLBasicTypeEnum, CWLBasicType
 
 def _build_scatter_wf(test_data_dir : Path, tmp_dir : Path, clt_files : list[str]) -> Workflow:
     clts = []

@@ -49,13 +49,13 @@ class CWLBasicTypeEnum(Enum):
         else:
             return value
 
-class CWLTypes_(BaseModel):
+class CWLType_(BaseModel):
     """Base Model for all CWL Types."""
     pass
 
 def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
     """Serialize CWLTypes based on actual type."""
-    if isinstance(type, CWLBasicTypes):
+    if isinstance(type, CWLBasicType):
         return type.type.value
     else:
         return {"type": "array", "items": serialize_type(type.items)}
@@ -63,7 +63,7 @@ def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
 def processType(type):
     """Factory for the concrete type."""
     if isinstance(type, str):
-        return CWLBasicTypes(type=type)
+        return CWLBasicType(type=type)
     elif isinstance(type, dict):
         return CWLArray(**type)
     else:
@@ -71,10 +71,10 @@ def processType(type):
 
 
 # Representation of any cwltypes.
-CWLTypes = Annotated[CWLTypes_, BeforeValidator(processType), WrapSerializer(serialize_type)]
+CWLType = Annotated[CWLType_, BeforeValidator(processType), WrapSerializer(serialize_type)]
 
 
-class CWLBasicTypes(CWLTypes_):
+class CWLBasicType(CWLType_):
     """Model that wraps an enum representing the basic types."""
     type: CWLBasicTypeEnum
 
@@ -86,10 +86,10 @@ class CWLBasicTypes(CWLTypes_):
         """Serialize input values."""
         return self.type.serialize_value(value)
     
-class CWLArray(CWLTypes_):
+class CWLArray(CWLType_):
     """Model that represents a CWL Array"""
     type: str = 'array'
-    items: CWLTypes
+    items: CWLType
 
     def isValidType(self, value : Any):
         """Check the python variable type can be assigned to this cwl type."""
@@ -234,13 +234,13 @@ class Parameter(BaseModel):
     # Check if we will still be able to retrieve it in the
     # type field validator.
     optional: bool = Field(False, exclude=True)
-    type: CWLTypes
+    type: CWLType
 
     # TODO TEST and FIX representation of cwl types.
     # This needs to be recursively parsing nested structures.
     @field_validator("type", mode="before")
     @classmethod
-    def transform_type(cls, type: CWLTypes, optional: Any = None) -> CWLTypes:
+    def transform_type(cls, type: CWLType, optional: Any = None) -> CWLType:
         """Check if we have an optional type."""
         if isinstance(type, list):
             # CHECK for optional types
@@ -309,7 +309,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
     be dynamically assign a value or link to another workflow input 
     or step output.
     """
-    type: CWLTypes = Field(exclude=True)
+    type: CWLType = Field(exclude=True)
     value: Any = None
     optional: bool = Field(exclude= True)
     step_id: str
@@ -350,7 +350,7 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
     """This a special kind of WorkflowStepOutput that can
     be dynamically link to another step input.
     """
-    type: CWLTypes = Field(exclude=True)
+    type: CWLType = Field(exclude=True)
     value: str = None
     step_id: str = None
 
@@ -427,7 +427,7 @@ class WorkflowStep(BaseModel):
         return out
 
     # TODO this could be move to the CWLModel pydantic model once we have it.
-    def promote_cwl_type(self, type: CWLTypes):
+    def promote_cwl_type(self, type: CWLType):
         """When scattering over some inputs, we will provide arrays of value of the
         original types.
         """
@@ -827,7 +827,7 @@ class StepBuilder():
 
 
     # TODO this could be move to the CWLModel pydantic model once we have it.
-    def _promote_cwl_type(self, type: CWLTypes):
+    def _promote_cwl_type(self, type: CWLType):
         """When scattering over some inputs, we will provide arrays of value of the
         original types.
         """
@@ -904,7 +904,7 @@ class  WorkflowBuilder():
                         for _other_step in kwds.get("steps"):
                             for _input in _other_step.in_:
                                 if _input.source == _ref:
-                                    if _input.type != CWLTypes.DIRECTORY:
+                                    if _input.type != CWLType.DIRECTORY:
                                         # CHECK probably untrue, what about files, array of files etc...
                                         raise Exception("should only be directory here!")
                                     else:

@@ -8,7 +8,7 @@ from polus.pipelines.workflows import (
 )
 
 from urllib.parse import urlparse
-from polus.pipelines.workflows.model import CWLArray, CWLTypes
+from polus.pipelines.workflows.model import CWLArray, CWLBasicType, CWLBasicTypeEnum, CWLType
 
 @pytest.mark.parametrize("filename", ["scatter-workflow2.cwl"])
 def test_load_scatter_wf(test_data_dir: Path, tmp_dir: Path, filename):
@@ -23,11 +23,11 @@ def test_load_scatter_wf(test_data_dir: Path, tmp_dir: Path, filename):
 
     wf_output = scatter_wf.outputs[0]
     assert isinstance(wf_output.type,CWLArray)
-    assert wf_output.type.items == CWLTypes.FILE
+    assert wf_output.type.items.type == CWLBasicTypeEnum.FILE
 
     wf_input = scatter_wf.inputs[0]
     assert isinstance(wf_input.type,CWLArray)
-    assert wf_input.type.items == CWLTypes.STRING
+    assert wf_input.type.items.type == CWLBasicTypeEnum.STRING
 
     # Check we do have a scatter feature requirement
     assert "ScatterFeatureRequirement" in set(
@@ -53,8 +53,8 @@ def test_build_scatter_step(test_data_dir: Path,
     assert len(step1.out) == 1
 
     # type checks
-    assert step1.message.type == CWLTypes.STRING
-    assert step1.message_string.type == CWLTypes.STRING
+    assert step1.message.type == CWLBasicType(type=CWLBasicTypeEnum.STRING)
+    assert step1.message_string.type == CWLBasicType(type=CWLBasicTypeEnum.STRING)
 
     # check value assignment
     step1.message = "test_message"
@@ -69,9 +69,9 @@ def test_build_scatter_step(test_data_dir: Path,
 
     # type promotion on scatter
     assert isinstance(step1.message.type,CWLArray)
-    assert step1.message.type.items == CWLTypes.STRING
+    assert step1.message.type.items == CWLBasicType(type=CWLBasicTypeEnum.STRING)
     assert isinstance(step1.message_string.type,CWLArray)
-    assert step1.message_string.type.items == CWLTypes.STRING
+    assert step1.message_string.type.items == CWLBasicType(type=CWLBasicTypeEnum.STRING)
 
     step1.message = ["test_message"]
 
@@ -119,11 +119,11 @@ def __test_build_scatter_wf(test_data_dir : Path, tmp_dir : Path, clt_files : li
     
     wf_input_0 = wf.inputs[0]
     assert isinstance(wf_input_0.type,CWLArray)
-    assert wf_input_0.type.items == CWLTypes.STRING
+    assert wf_input_0.type.items == CWLBasicType(type=CWLBasicTypeEnum.STRING)
 
     for wf_output in wf.outputs:
         assert isinstance(wf_output.type,CWLArray)
-        assert wf_output.type.items == CWLTypes.STRING
+        assert wf_output.type.items == CWLBasicType(type=CWLBasicTypeEnum.STRING)
 
     return wf
 
@@ -144,8 +144,6 @@ def test_run_scatter_wf(test_data_dir: Path,
     run_cwl(wf_cwl_file, extra_args=input_values)
 
 
-# TODO FIX
-@pytest.mark.xfail(reason="need fix.")
 @pytest.mark.parametrize("clt_files", [["echo_string.cwl", "uppercase2_wic_compatible3.cwl"]])
 def test_run_scatter_wf_with_config(test_data_dir: Path,
                           tmp_dir: Path,
