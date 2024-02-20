@@ -1,6 +1,6 @@
 from typing import Annotated, Union
 from pydantic import (
-    BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, ValidationError,
+    BaseModel, BeforeValidator, ConfigDict, Field, SerializerFunctionWrapHandler, ValidationError,
     computed_field, WrapSerializer, field_serializer
 )
 from pydantic.functional_validators import AfterValidator, field_validator
@@ -11,7 +11,8 @@ from typing import Optional, Any
 from rich import print
 from enum import Enum
 
-class CWLTypes(Enum):
+
+class CWLBasicTypeEnum(Enum):
     """CWL basic types."""
 
     NULL = "null"
@@ -25,37 +26,66 @@ class CWLTypes(Enum):
     DIRECTORY = "Directory"
 
     def isValidType(self, value: Any):
-        """Check the python variable type can be assigned to this cwl type."""
-        if self == CWLTypes.STRING:
+        """Check if the python variable type can be assigned to this cwl type."""
+        if self == CWLBasicTypeEnum.STRING:
             return isinstance(value, str)
-        elif self == CWLTypes.INT or self == CWLTypes.LONG:
+        elif self == CWLBasicTypeEnum.INT or self == CWLBasicTypeEnum.LONG:
             return isinstance(value, int)
-        elif self == CWLTypes.FLOAT or self == CWLTypes.DOUBLE:
+        elif self == CWLBasicTypeEnum.FLOAT or self == CWLBasicTypeEnum.DOUBLE:
             return isinstance(value, float)
-        elif self == CWLTypes.FILE or self == CWLTypes.DIRECTORY:
+        elif self == CWLBasicTypeEnum.FILE or self == CWLBasicTypeEnum.DIRECTORY:
             return isinstance(value,Path)
-        elif self == CWLTypes.BOOLEAN:
+        elif self == CWLBasicTypeEnum.BOOLEAN:
             return isinstance(value, bool)
         # default
         return False
 
+class CWLTypes_(BaseModel):
+    """Base Model for all CWL Types."""
+    pass
+
+def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
+    """Serialize CWLTypes based on actual type."""
+    if isinstance(type, CWLBasicTypes):
+        return type.type.value
+    else:
+        return {"type": "array", "items": serialize_type(type.items)}
+
+def processType(type):
+    """Factory for the concrete type."""
+    if isinstance(type, str):
+        return CWLBasicTypes(type=type)
+    elif isinstance(type, dict):
+        return CWLArray(**type)
+    else:
+        return type
 
 
+# Representation of any cwltypes.
+CWLTypes = Annotated[CWLTypes_, BeforeValidator(processType), WrapSerializer(serialize_type)]
 
 
+class CWLBasicTypes(CWLTypes_):
+    """Model that wraps an enum representing the basic types."""
+    type: CWLBasicTypeEnum
 
-# TODO FIX 
-# per https://www.commonwl.org/v1.2/Workflow.html#InputArraySchema
-# we can have nested arrays at any level.
-# For now we only handle array of base types.
-class CWLArray(BaseModel):
-    """Array of elements of base types."""
+    def isValidType(self, value):
+        """Check if the given value is represented by this type."""
+        return self.type.isValidType(value)
+
+    
+class CWLArray(CWLTypes_):
+    """Model that represents a CWL Array"""
+    type: str = 'array'
     items: CWLTypes
 
-    #TODO CHECK Python raw type is correct
     def isValidType(self, value : Any):
         """Check the python variable type can be assigned to this cwl type."""
-        return isinstance(value, list)
+        if not isinstance(value, list):
+            return False
+        # TODO we only check the first value
+        # should we check all values?
+        return self.items.isValidType(value[0])
 
 
 def file_exists(path : Path):
@@ -189,14 +219,14 @@ class Parameter(BaseModel):
     # Check if we will still be able to retrieve it in the
     # type field validator.
     optional: bool = Field(False, exclude=True)
-    type: Union[CWLArray, CWLTypes]
+    type: CWLTypes
 
     # TODO TEST and FIX representation of cwl types.
     # This needs to be recursively parsing nested structures.
     @field_validator("type", mode="before")
     @classmethod
-    def transform_type(cls, type: Any, optional: Any = None) -> Union[CWLTypes,CWLArray]:
-        """Ingest any python type an transform it into a valid CWLType."""
+    def transform_type(cls, type: CWLTypes, optional: Any = None) -> CWLTypes:
+        """Check if we have an optional type."""
         if isinstance(type, list):
             # CHECK for optional types
             if type[0] == 'null':
@@ -206,31 +236,8 @@ class Parameter(BaseModel):
                 optional.data['optional'] = True
                 return cls.transform_type(type[1])
             raise UnexpectedTypeError({type})
-        if isinstance(type, dict):
-            # TODO Test for arrays. Check if other representation are allowed.
-            return CWLArray(**type)
-        if isinstance(type, CWLTypes):
-            return type
-        else:
-            try:
-                return CWLTypes(type)
-            except:
-                raise UnexpectedTypeError({type})
+        return type
 
-
-    @field_serializer('type', when_used='always')
-    def serialize_type(type: Union[CWLTypes,CWLArray]):
-        """Define rules to serialize parameter types."""
-        if isinstance(type, CWLTypes):
-            serialized_type = type.value
-        elif isinstance(type, CWLArray):
-            # TODO maybe switch to standard form instead
-            serialized_type = f"{type.items.value}[]"
-            # TODO CHECK apparently this is not allowed.
-            # serialized_type = {"items": type.items.value}
-        else:
-            raise NotImplementedError(f"No support for type : {type}")
-        return serialized_type
 
 class InputParameter(Parameter):
     """Base class of any input parameter."""
@@ -287,35 +294,10 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
     be dynamically assign a value or link to another workflow input 
     or step output.
     """
-    type: Union[CWLTypes,CWLArray] = Field(exclude=True)
+    type: CWLTypes = Field(exclude=True)
     value: Any = None
     optional: bool = Field(exclude= True)
     step_id: str
-
-    # TODO we also do the type checking here because type is a union
-    # transform type to a base model so we can factor this code everywhere.
-    @field_validator("type", mode="before")
-    @classmethod
-    def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
-        if isinstance(type, dict):
-            return CWLArray(**type)
-        if isinstance(type, list):
-            if type[0] == 'null':
-                # TODO CHECK what to do with unset optional
-                return
-            else:
-                raise NotImplementedError
-        return CWLTypes(type)
-
-    @field_serializer('type', when_used='always')
-    def serialize_type(type: Union[CWLTypes,CWLArray]):
-        if isinstance(type, CWLTypes):
-            serialized_type = type.value
-        elif isinstance(type, CWLArray):
-            serialized_type = f"{type.items.value}[]"
-        else:
-            raise NotImplementedError
-        return serialized_type
 
     # TODO CHECK we could use pydantic model instead
     def set_value(self, value: Any):
@@ -353,34 +335,9 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
     """This a special kind of WorkflowStepOutput that can
     be dynamically link to another step input.
     """
-    type: Union[CWLTypes,CWLArray] = Field(exclude=True)
+    type: CWLTypes = Field(exclude=True)
     value: str = None
     step_id: str = None
-
-    # TODO third time we need to do the same validation.
-    # Need to factor that code otherwise bugs will creep in.
-    @field_validator("type", mode="before")
-    @classmethod
-    def transform_type(cls, type: Any) -> Union[CWLTypes,CWLArray]:
-        if isinstance(type, dict):
-            return CWLArray(**type)
-        if isinstance(type, list):
-            if type[0] == 'null':
-                # TODO CHECK what to do with unset optional
-                return
-            else:
-                raise NotImplementedError
-        return CWLTypes(type)
-
-    @field_serializer('type', when_used='always')
-    def serialize_type(type: Union[CWLTypes,CWLArray]):
-        if isinstance(type, CWLTypes):
-            serialized_type = type.value
-        elif isinstance(type, CWLArray):
-            serialized_type = f"{type.items.value}[]"
-        else:
-            raise NotImplementedError
-        return serialized_type
 
 WorkflowStepId = Annotated[str,[]]
 
@@ -584,10 +541,10 @@ class WorkflowStep(BaseModel):
     # TODO we probably could do better than having a adhoc serialization function
     def serialize_value(self, input):
         """Serialize input values."""
-        # TODO check we cover all cases
-        if input.type == CWLTypes.DIRECTORY:
+        # TODO How do deal with nested types?
+        if input.type.type == CWLBasicTypeEnum.DIRECTORY:
             return {"class": "Directory", "location": Path(input.value).as_posix()}
-        elif input.type == CWLTypes.FILE:
+        elif input.type.type == CWLBasicTypeEnum.FILE:
              return {"class": "File", "location": Path(input.value).as_posix()}
         else:
             return input.value
@@ -957,8 +914,6 @@ class  WorkflowBuilder():
                     
                     # TODO create method, we could also wrap CWLTypes in a pydantic model
                     input_type = input.type
-                    # TODO Remove once we fix type system.
-                    input_type = input_type.model_dump() if isinstance(input_type, CWLArray) else input_type.value
                     workflow_input_id = generate_workflow_io_id(id, step.id, input.id)
                     workflow_input = WorkflowInputParameter(
                         id= workflow_input_id,
@@ -969,8 +924,6 @@ class  WorkflowBuilder():
 
             for output in step.out:
                     output_type = output.type
-                    # TODO CHANGE that once we have review the type system.
-                    output_type = output_type.model_dump() if isinstance(output_type, CWLArray) else output_type.value
                     workflow_output_id = generate_workflow_io_id(id, step.id, output.id)
 
                     workflow_output = WorkflowOutputParameter(
