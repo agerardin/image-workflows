@@ -39,6 +39,15 @@ class CWLBasicTypeEnum(Enum):
             return isinstance(value, bool)
         # default
         return False
+    
+    def serialize_value(self, value: Any):
+        """Serialize input values."""
+        if self == CWLBasicTypeEnum.DIRECTORY:
+            return {"class": "Directory", "location": Path(value).as_posix()}
+        elif self == CWLBasicTypeEnum.FILE:
+             return {"class": "File", "location": Path(value).as_posix()}
+        else:
+            return value
 
 class CWLTypes_(BaseModel):
     """Base Model for all CWL Types."""
@@ -73,6 +82,9 @@ class CWLBasicTypes(CWLTypes_):
         """Check if the given value is represented by this type."""
         return self.type.isValidType(value)
 
+    def serialize_value(self, value: Any):
+        """Serialize input values."""
+        return self.type.serialize_value(value)
     
 class CWLArray(CWLTypes_):
     """Model that represents a CWL Array"""
@@ -87,6 +99,9 @@ class CWLArray(CWLTypes_):
         # should we check all values?
         return self.items.isValidType(value[0])
 
+    def serialize_value(self, value: Any):
+        """Serialize input values."""
+        return "[" + self.type.serialize_value(value) + "]"
 
 def file_exists(path : Path):
     """Check we have a file a disk and return resolved."""
@@ -539,15 +554,9 @@ class WorkflowStep(BaseModel):
             return self._inputs[name]
 
     # TODO we probably could do better than having a adhoc serialization function
-    def serialize_value(self, input):
+    def serialize_value(self, input : AssignableWorkflowStepInput):
         """Serialize input values."""
-        # TODO How do deal with nested types?
-        if input.type.type == CWLBasicTypeEnum.DIRECTORY:
-            return {"class": "Directory", "location": Path(input.value).as_posix()}
-        elif input.type.type == CWLBasicTypeEnum.FILE:
-             return {"class": "File", "location": Path(input.value).as_posix()}
-        else:
-            return input.value
+        return input.type.serialize_value(input.value)
 
 
     def save_config(self, path = Path()) -> Path:
