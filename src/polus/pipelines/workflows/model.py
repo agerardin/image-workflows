@@ -756,14 +756,6 @@ class StepBuilder():
                 step_id= step_id
             )
             for output in process.outputs]
-
-        # inputs = [{"id":input.id,
-        #            "source":"UNSET",
-        #            "type": input.type,
-        #            "optional": input.optional
-        #            }
-        #           for input in process.inputs]
-        # outputs = [output.id for output in process.outputs]
         
         # Generate additional inputs.
         # For example,if the conditional clause contains unknown inputs.
@@ -771,29 +763,31 @@ class StepBuilder():
         # TODO REVISIT that later after some use.        
         _add_inputs_ids = set([input["id"] for input in add_inputs]) if add_inputs else set()
 
-        # # input referenced in the when clause may or may not be already declared if the process.
-        # # If not, user must provide a description of it.
-        # # TODO we could evaluate the clause rather than having the user declare explicitly.
-        # if when:
-        #     if not when_input_names:
-        #         raise Exception("You need to specify which inputs are referenced in the when clause.")
+        # input referenced in the when clause may or may not be already declared if the process.
+        # If not, user must provide a description of it.
+        # TODO we could evaluate the clause rather than having the user declare explicitly.
+        if when:
+            if not when_input_names:
+                raise Exception("You need to specify which inputs are referenced in the when clause.")
             
-        #     _process_inputs_ids = set([input.id for input in process.inputs])
-        #     for when_input_name in when_input_names:
-        #         if not (when_input_name in _process_inputs_ids):
-        #             if not(when_input_name in _add_inputs_ids):
-        #                 raise Exception("Input in when clause unknown. Please add its declaration to add_inputs arguments.")
+            _process_inputs_ids = set([input.id for input in process.inputs])
+            for when_input_name in when_input_names:
+                if not (when_input_name in _process_inputs_ids):
+                    if not(when_input_name in _add_inputs_ids):
+                        raise Exception("Input in when clause unknown. Please add its declaration to add_inputs arguments.")
         
-        # if add_inputs:
-        #     # TODO refactor : same model use twice
-        #     # TODO plus we should parse the model to extract
-        #     # optionalilty from the type.
-        #     inputs = inputs + [{
-        #                         "id":input["id"], 
-        #                         "source":"UNSET", 
-        #                         "type": input["type"]
-        #                         }
-        #         for input in add_inputs]
+        if add_inputs:
+            # TODO refactor : same model use twice
+            # TODO plus we should parse the model to extract
+            # optionalilty from the type.
+            inputs = inputs + [
+                AssignableWorkflowStepInput(
+                    id= input.id,
+                    source= "UNSET",
+                    type= input.type,
+                    optional= input.optional,
+                    step_id= step_id
+                )]
             
         self.step = WorkflowStep(
             scatter = scatter,
@@ -805,13 +799,6 @@ class StepBuilder():
             from_builder = True,
             )
         
-        # TODO update pydantic to consume this model
-        # rather than having to generate string, then type?
-        # But we have to make sure it works when loading plain cwl files.
-        # outputs = [{"id":output.id, 
-        #             "type":output.type
-        #             } for output in process.outputs]
-
         self.step.set_mutable_ios(inputs, outputs) 
 
         # For a workflow, bubble up values assigned to its steps.
