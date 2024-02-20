@@ -25,7 +25,7 @@ def test_workflow_builder(test_data_dir: Path, clts: list[str]):
     wf: Workflow = wf_builder()
 
     input_count = len(wf.inputs)
-    expected_count = 2
+    expected_count = 3
     assert input_count == expected_count, f"workflow should have {expected_count} input, got {input_count}." 
 
 
@@ -39,6 +39,7 @@ def test_workflow_builder_with_linked_steps(test_data_dir: Path, clts: list[str]
         step_builder = StepBuilder(clt)
         step = step_builder()
         steps.append(step)
+
 
     (step1, step2) = steps
     step2.message = step1.message_string

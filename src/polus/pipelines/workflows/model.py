@@ -431,13 +431,16 @@ class WorkflowStep(BaseModel):
         """When serializing, return only the list of ids."""
         return [output.id for output in out]
 
-    # @field_validator("out", mode="before")
-    # # type: ignore
-    # @classmethod
-    # def transform_workflow_step_output(cls, out) -> Any:  # pylint: disable=no-self-argument
-    #     """Return name of input from InputParameter.id."""
-    #     res = [{"id": wf_step_output} for wf_step_output in out]
-    #     return res
+    @field_validator("out", mode="before")
+    @classmethod
+    def preprocess_workflow_step_output(cls, out) -> Any:
+        """Wrap ids if we receive them as simple strings.
+        
+        This is required when loading a workflow with the cwl parser.
+        """
+        res = [{"id": wf_step_output} if isinstance(wf_step_output, str)
+               else wf_step_output for wf_step_output in out]
+        return res
     
     # TODO this could be move to the CWLModel pydantic model once we have it.
     def promote_cwl_type(self, type: CWLTypes):
@@ -688,6 +691,7 @@ class Workflow(Process):
         """
         clt_file = file_exists(clt_file)
         cwl_clt = cwl_parser.load_document_by_uri(clt_file)
+
         # TODO CHECK save rewrite ids and runs ref.
         # Make sure this is not an issue.
         # In particular rewrite runs can be an issue if not managed properly
