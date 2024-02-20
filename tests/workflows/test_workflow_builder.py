@@ -12,7 +12,7 @@ from polus.pipelines.workflows import (
 logger = logging.getLogger()
 
 @pytest.mark.parametrize("clts", [["echo_string.cwl", "uppercase2_wic_compatible2.cwl"]])
-def test_workflow_builder_with_linked_steps(test_data_dir: Path, clts: list[str]):
+def test_workflow_builder(test_data_dir: Path, clts: list[str]):
     steps = []
     for filename in clts:
         cwl_file = test_data_dir / filename

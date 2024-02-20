@@ -44,3 +44,10 @@
 # _type1 = {"id":"string"}
 # type1 = CWLType(**_type1)
 
+from polus.pipelines.workflows.model import CWLTypes, CWLArray
+
+
+def test_cwltypes():
+    dict = { 'items': 'string'}
+    cwl_array = CWLArray(**dict)
+    assert cwl_array.items == CWLTypes.STRING
