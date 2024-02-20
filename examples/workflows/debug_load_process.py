@@ -7,6 +7,11 @@ def test_load_workflow(test_data_dir: Path, filename: str):
     wf1 = Workflow.load(cwl_file)
     print(wf1)
 
+
 test_data_dir = Path() / "tests" / "workflows" / "test_data"
 filename = "workflow5.cwl"
+test_load_workflow(test_data_dir, filename)
+
+
+filename = "scatter-workflow1.cwl"
 test_load_workflow(test_data_dir, filename)

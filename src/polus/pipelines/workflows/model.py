@@ -11,7 +11,6 @@ from typing import Optional, Any
 from rich import print
 from enum import Enum
 
-
 class CWLTypes(Enum):
     """CWL basic types."""
 
@@ -39,6 +38,10 @@ class CWLTypes(Enum):
             return isinstance(value, bool)
         # default
         return False
+
+
+
+
 
 
 # TODO FIX 
@@ -187,7 +190,7 @@ class Parameter(BaseModel):
     # Check if we will still be able to retrieve it in the
     # type field validator.
     optional: bool = Field(False, exclude=True)
-    type: Union[CWLTypes,CWLArray]
+    type: Union[CWLArray, CWLTypes]
 
     # TODO TEST and FIX representation of cwl types.
     # This needs to be recursively parsing nested structures.
@@ -443,7 +446,15 @@ class WorkflowStep(BaseModel):
         res = [{"id": wf_step_output} if isinstance(wf_step_output, str)
                else wf_step_output for wf_step_output in out]
         return res
-    
+
+    @field_validator("scatter", mode="before")
+    @classmethod
+    def preprocess_scatter(cls, out) -> Any:
+        """Single string are allowed in CWL, so wrap them in an array."""
+        if isinstance(out, str):
+            out = [out]
+        return out
+
     # TODO this could be move to the CWLModel pydantic model once we have it.
     def promote_cwl_type(self, type: CWLTypes):
         """When scattering over some inputs, we will provide arrays of value of the
