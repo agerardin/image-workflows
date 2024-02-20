@@ -50,7 +50,6 @@ class CWLTypes(Enum):
 # For now we only handle array of base types.
 class CWLArray(BaseModel):
     """Array of elements of base types."""
-
     items: CWLTypes
 
     #TODO CHECK Python raw type is correct

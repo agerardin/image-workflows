@@ -10,9 +10,12 @@ baseCommand: echo
 
 inputs:
   message:
-    type: 
+    type:
+      type: array
       items:
+        type: array
         items:
+          type: array
           items:
             string
     inputBinding:
@@ -22,11 +25,15 @@ stdout: message
 
 outputs:
   message_string:
-    type: 
-      items:
-        items:
-          items:
-            string
+    type: string
+    # type:
+    #   type: array
+    #   items:
+    #     type: array
+    #     items:
+    #       type: array
+    #       items:
+    #         string
     outputBinding:
       glob: message
       loadContents: True

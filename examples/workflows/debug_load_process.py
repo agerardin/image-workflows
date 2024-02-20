@@ -15,3 +15,7 @@ test_load_workflow(test_data_dir, filename)
 
 filename = "scatter-workflow1.cwl"
 test_load_workflow(test_data_dir, filename)
+
+
+filename = "nested_types3.cwl"
+test_load_workflow(test_data_dir, filename)
