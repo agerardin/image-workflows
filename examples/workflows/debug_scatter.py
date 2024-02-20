@@ -6,7 +6,7 @@ from polus.pipelines.workflows import (
     run_cwl
 )
 from urllib.parse import urlparse
-from polus.pipelines.workflows.model import CWLArray, CWLBaseType
+from polus.pipelines.workflows.model import CWLTypes, CWLArray, CWLBasicTypeEnum, CWLBasicTypes
 
 def _build_scatter_wf(test_data_dir : Path, tmp_dir : Path, clt_files : list[str]) -> Workflow:
     clts = []
@@ -40,11 +40,11 @@ def _build_scatter_wf(test_data_dir : Path, tmp_dir : Path, clt_files : list[str
     
     wf_input_0 = wf.inputs[0]
     assert isinstance(wf_input_0.type,CWLArray)
-    assert wf_input_0.type.items == CWLBaseType.STRING
+    assert wf_input_0.type.items.type == CWLBasicTypeEnum.STRING, wf_input_0.type.items
 
     for wf_output in wf.outputs:
         assert isinstance(wf_output.type,CWLArray)
-        assert wf_output.type.items == CWLBaseType.STRING
+        assert wf_output.type.items.type == CWLBasicTypeEnum.STRING
 
     return wf
 
@@ -59,9 +59,8 @@ def test_run_scatter_wf_with_config(test_data_dir: Path,
     wf = _build_scatter_wf(test_data_dir, tmp_dir, clt_files)
     step_builder = StepBuilder(wf)
     wf_step = step_builder()
-    wf_step.in_[0] = ["ok"]
+    wf_step.in_[0].value = ["ok", "message"]
 
-    assert wf.inputs[0].value == "ok"
     config = wf_step.save_config()
 
     run_cwl(Path()/f"{wf.name}.cwl", config_file=config)

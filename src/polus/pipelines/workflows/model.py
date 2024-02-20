@@ -101,7 +101,7 @@ class CWLArray(CWLTypes_):
 
     def serialize_value(self, value: Any):
         """Serialize input values."""
-        return "[" + self.type.serialize_value(value) + "]"
+        return [ self.items.serialize_value(val) for val in value]
 
 def file_exists(path : Path):
     """Check we have a file a disk and return resolved."""
