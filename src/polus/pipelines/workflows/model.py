@@ -1,19 +1,15 @@
 from typing import Annotated, Union
 from pydantic import (
-    BaseModel, ConfigDict, Field, PrivateAttr, SerializerFunctionWrapHandler, ValidationError,
-    computed_field, validator, WrapSerializer, field_serializer
+    BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, ValidationError,
+    computed_field, WrapSerializer, field_serializer
 )
 from pydantic.functional_validators import AfterValidator, field_validator
 import cwl_utils.parser as cwl_parser
 from pathlib import Path
-from yaml import safe_load, dump
 import yaml
-from pydantic.dataclasses import dataclass
-from typing import NewType, Optional, Any
+from typing import Optional, Any
 from rich import print
-from urllib.parse import unquote, urlparse
 from enum import Enum
-import os
 
 
 class CWLTypes(Enum):
@@ -184,6 +180,8 @@ class Parameter(BaseModel):
     (CWL encodes this information in the type declaration)
     """
     id: ParameterId
+    # TODO make optional a parameter so it cannot be set
+    # but only derived from type.
     optional: bool = Field(False, exclude=True)
     type: Union[CWLTypes,CWLArray]
 
@@ -603,7 +601,7 @@ class WorkflowStep(BaseModel):
         with open(file_path, "w", encoding="utf-8") as file:
             # TODO CHECK how configurable this process is.
             # ex: we generate list but we could also generate some dictionaries.
-            file.write(dump(config))
+            file.write(yaml.dump(config))
             return file_path 
     
 
@@ -644,7 +642,7 @@ class Process(BaseModel):
         file_path = path / (self.name + ".cwl")
         serialized_process = self.model_dump(by_alias=True, exclude={'name'}, exclude_none=True)
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write(dump(serialized_process))
+            file.write(yaml.dump(serialized_process))
             return file_path 
 
     # TODO CHECK can we have equivalent of virtual methods in python?
@@ -851,6 +849,11 @@ class  WorkflowBuilder():
         # which are not already connected.
         # TODO Similarly we could have an option to hide/rename steps the list 
         # of workflow inputs.
+
+        # TODO Many possible strategies here: 
+        # We could change that, make that a user provided option,
+        # generate simpler names if no clash are detected 
+        # or provide ability for aliases...
         def generate_workflow_io_id(worklflow_id : str, step_id: str, io_id: str):
             """generate id for workflow ios. Note that ('/') are forbidden."""
             return worklflow_id + "___" + step_id + "___" + io_id
@@ -874,6 +877,8 @@ class  WorkflowBuilder():
                 if input.source == 'UNSET':
 
                     # Ignore unset optional inputs
+                    # TODO CHECK again but nothing else seems to be possible.
+                    # IMO this is a problem with the standard.
                     if input.optional and input.value is None:
                         continue
 
@@ -914,7 +919,10 @@ class  WorkflowBuilder():
                     # TODO Remove once we fix type system.
                     input_type = input_type.model_dump() if isinstance(input_type, CWLArray) else input_type.value
                     workflow_input_id = generate_workflow_io_id(id, step.id, input.id)
-                    workflow_input = { "id": workflow_input_id, "type":input_type }
+                    workflow_input = WorkflowInputParameter(
+                        id= workflow_input_id,
+                        type= input_type
+                        )
                     input.source = workflow_input_id
                     workflow_inputs.append(workflow_input)
 
@@ -923,14 +931,18 @@ class  WorkflowBuilder():
                     # TODO CHANGE that once we have review the type system.
                     output_type = output_type.model_dump() if isinstance(output_type, CWLArray) else output_type.value
                     workflow_output_id = generate_workflow_io_id(id, step.id, output.id)
-                    workflow_output = {"id": workflow_output_id,
-                                       "type":output_type,
-                                       "outputSource": step.id + "/" + output.id
-                                       }
+
+                    workflow_output = WorkflowOutputParameter(
+                        id = workflow_output_id,
+                        type= output_type,
+                        outputSource= step.id + "/" + output.id
+                    )
                     workflow_outputs.append(workflow_output)
 
             # TODO That is where a context of loaded CLTs could be helpful.
             # So we don't keep reloading the same models.
+            # Detect if we need to add subworkflowFeatureRequirement.
+            # TODO we could remove most of the code here.
             cwl_file = cwl_parser.load_document_by_uri(step.run)
             yaml_cwl = cwl_parser.save(cwl_file)
             if cwl_file.class_ == "CommandLineTool":
