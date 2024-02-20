@@ -20,10 +20,19 @@ def test_workflow_builder():
         step = step_builder()
         steps.append(step)
 
+    (step1, step2) = steps
+    step2.message = step1.message_string
+    step2.uppercase_message = step1.message_string
+
     wf_builder = WorkflowBuilder("wf_test_builder", steps=steps)
     wf: Workflow = wf_builder()
-    # wf_file = wf.save()
+    wf_file = wf.save()
 
-    # run_cwl(wf_file)
+    wf = StepBuilder(wf)()
+    wf.wf_test_builder___step_echo_string___message = "test_message"
+
+    config = wf.save_config()
+
+    run_cwl(wf_file, config_file=config)
 
 test_workflow_builder()

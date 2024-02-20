@@ -406,6 +406,19 @@ class WorkflowStep(BaseModel):
     run: str
     in_: WorkflowStepInputs = Field(..., alias='in')
     out: WorkflowStepOutputs = Field(...)
+
+    @property
+    # TODO CHECK if we can type it to StepInputId
+    def _inputs(self) -> dict[str, WorkflowStepInput]:
+        """Generate a dict of WorkflowStepInputs for efficient retrieval."""
+        return {input.id:input for input in self.in_}
+
+    @property
+    # TODO CHECK if we can type it to StepInputId
+    def _outputs(self) -> dict[str, WorkflowStepInput]:
+        """Generate a dict of WorkflowStepOutputs for efficient retrieval."""
+        return {output.id:output for output in self.out}
+
     # TODO CHECK if we can type it to StepInputId
     scatter: Optional[list[str]] = Field(None) # ref to scatter inputs
     when: Optional[str] = Field(None) # ref to conditional execution clauses
@@ -414,7 +427,8 @@ class WorkflowStep(BaseModel):
     from_builder: Optional[bool] = Field(False, exclude=True)
 
     @field_serializer('out', when_used='always')
-    def serialize_type(out:  WorkflowStepOutputs):
+    def serialize_type(out:  WorkflowStepOutputs) -> list[str] :
+        """When serializing, return only the list of ids."""
         return [output.id for output in out]
 
     # @field_validator("out", mode="before")
@@ -565,7 +579,12 @@ class WorkflowStep(BaseModel):
 
 
     def save_config(self, path = Path()) -> Path:
-        """Save the workflow configuration."""
+        """Save the workflow configuration.
+        Args:
+            - path : the path to the directory 
+            in which to save the config.
+        Returns: the path to the config file.
+        """
         config = {input.id: self.serialize_value(input) for input in self.in_ if input.value is not None}
         
         #TODO same code as process.save() so factor
@@ -777,9 +796,6 @@ class StepBuilder():
                         raise Exception("Input in when clause unknown. Please add its declaration to add_inputs arguments.")
         
         if add_inputs:
-            # TODO refactor : same model use twice
-            # TODO plus we should parse the model to extract
-            # optionalilty from the type.
             inputs = inputs + [
                 AssignableWorkflowStepInput(
                     id= input.id,
@@ -798,8 +814,6 @@ class StepBuilder():
             out = outputs,
             from_builder = True,
             )
-        
-        self.step.set_mutable_ios(inputs, outputs) 
 
         # For a workflow, bubble up values assigned to its steps.
         # The become values of the workflow inputs.
@@ -812,7 +826,6 @@ class StepBuilder():
                             self.step._inputs[input.source].value = input.value
                             assignable_step_input = self.step._inputs[input.source]
                             print(assignable_step_input)
-
 
 
     def __call__(self) -> WorkflowStep:
