@@ -184,6 +184,8 @@ class Parameter(BaseModel):
     id: ParameterId
     # TODO make optional a parameter so it cannot be set
     # but only derived from type.
+    # Check if we will still be able to retrieve it in the
+    # type field validator.
     optional: bool = Field(False, exclude=True)
     type: Union[CWLTypes,CWLArray]
 
@@ -471,66 +473,66 @@ class WorkflowStep(BaseModel):
         self._inputs = {input.id:input for input in inputs}
         self._outputs = {output.id:output for output in outputs}
 
-        # assignable_ins = []
-        # _inputs = {}
-        # for step_in in self.in_:
-        #     process_input = inputs[step_in.id]
-        #     # TODO change when we have a model. This is bug prone.
-        #     in_type = process_input.type
+        assignable_ins = []
+        _inputs = {}
+        for step_in in self.in_:
+            process_input = inputs[step_in.id]
+            # TODO change when we have a model. This is bug prone.
+            in_type = process_input.type
 
-        #     # TODO REMOVE we should create a parse Parameter model
-        #     # rather than adhoc dictionaries.
-        #     # optional can be missing when parsing additional input
-        #     if "optional" in process_input:
-        #         optional = process_input.optional
-        #     else:
-        #         optional = False
+            # TODO REMOVE we should create a parse Parameter model
+            # rather than adhoc dictionaries.
+            # optional can be missing when parsing additional input
+            if "optional" in process_input:
+                optional = process_input.optional
+            else:
+                optional = False
             
-        #     if self.scatter:
-        #         if step_in.id in self.scatter:
-        #             in_type = self.promote_cwl_type(in_type)
+            if self.scatter:
+                if step_in.id in self.scatter:
+                    in_type = self.promote_cwl_type(in_type)
 
-        #     values = step_in.model_dump()
+            values = step_in.model_dump()
 
-        #     # TODO useless now, remove
-        #     assignable_in = AssignableWorkflowStepInput(
-        #         id=process_input.id,
-        #         source=process_input.source,
-        #         value=None,
-        #         type=in_type,
-        #         optional=optional,
-        #         step_id=self.id
-        #         )
+            # TODO useless now, remove
+            assignable_in = AssignableWorkflowStepInput(
+                id=process_input.id,
+                source=process_input.source,
+                value=None,
+                type=in_type,
+                optional=optional,
+                step_id=self.id
+                )
 
-        #     # assignable_in = AssignableWorkflowStepInput(
-        #     #     **values,
-        #     #     value=None,
-        #     #     type=in_type,
-        #     #     optional=optional,
-        #     #     step_id=self.id
-        #     #     )
-        #     assignable_ins.append(assignable_in)
-        #     _inputs[step_in.id] = assignable_in
+            # assignable_in = AssignableWorkflowStepInput(
+            #     **values,
+            #     value=None,
+            #     type=in_type,
+            #     optional=optional,
+            #     step_id=self.id
+            #     )
+            assignable_ins.append(assignable_in)
+            _inputs[step_in.id] = assignable_in
 
-        # self.in_ = assignable_ins
-        # self._inputs = _inputs
+        self.in_ = assignable_ins
+        self._inputs = _inputs
 
-        # assignable_outs = []
-        # _outputs = {}
-        # for step_out in self.out:
-        #     process_output = outputs[step_out.id]
-        #     # TODO change when have a model
-        #     out_type = process_output["type"]
-        #     if self.scatter:
-        #         out_type = self.promote_cwl_type(out_type)
-        #     values = step_out.model_dump()
-        #     assignable_out = AssignableWorkflowStepOutput(
-        #         **values, type=out_type, step_id=self.id
-        #         )
-        #     assignable_outs.append(assignable_out)
-        #     _outputs[step_out.id] = assignable_out
-        # self.out = assignable_outs
-        # self._outputs = _outputs
+        assignable_outs = []
+        _outputs = {}
+        for step_out in self.out:
+            process_output = outputs[step_out.id]
+            # TODO change when have a model
+            out_type = process_output["type"]
+            if self.scatter:
+                out_type = self.promote_cwl_type(out_type)
+            values = step_out.model_dump()
+            assignable_out = AssignableWorkflowStepOutput(
+                **values, type=out_type, step_id=self.id
+                )
+            assignable_outs.append(assignable_out)
+            _outputs[step_out.id] = assignable_out
+        self.out = assignable_outs
+        self._outputs = _outputs
 
     def __setattr__(self, name: str, value: Any) -> None:
         """This is enabling assignment in our python DSL."""
@@ -767,7 +769,9 @@ class StepBuilder():
             AssignableWorkflowStepInput(
                 id= input.id,
                 source= "UNSET",
-                type= input.type,
+                type= self._promote_cwl_type(input.type)
+                    if scatter and input.id in scatter
+                    else input.type,
                 optional= input.optional,
                 step_id= step_id
             )
@@ -776,7 +780,9 @@ class StepBuilder():
         outputs = [
             AssignableWorkflowStepOutput(
                 id= output.id, 
-                type= output.type,
+                type= self._promote_cwl_type(output.type)
+                    if scatter
+                    else output.type,
                 step_id= step_id
             )
             for output in process.outputs]
@@ -810,14 +816,16 @@ class StepBuilder():
         
         if add_inputs:
             inputs = inputs + [
-                # TODO optional should be derived from type
                 AssignableWorkflowStepInput(
                     id= input.id,
                     source= "UNSET",
-                    type= input.type,
+                    type= self._promote_cwl_type(input.type)
+                        if scatter and input.id in scatter
+                        else input.type,
                     optional= input.optional,
                     step_id= step_id
-                ) for input in add_inputs]
+                )
+            for input in add_inputs]
             
         self.step = WorkflowStep(
             scatter = scatter,
@@ -840,6 +848,17 @@ class StepBuilder():
                             self.step._inputs[input.source].value = input.value
                             assignable_step_input = self.step._inputs[input.source]
                             print(assignable_step_input)
+
+
+    # TODO this could be move to the CWLModel pydantic model once we have it.
+    def _promote_cwl_type(self, type: CWLTypes):
+        """When scattering over some inputs, we will provide arrays of value of the
+        original types.
+        """
+        if isinstance(type, CWLArray):
+            #TODO FIX
+            raise NotImplementedError("scattering CWLArray is not yet implemented.")
+        return CWLArray(items=type)
 
 
     def __call__(self) -> WorkflowStep:

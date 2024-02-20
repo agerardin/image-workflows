@@ -21,6 +21,10 @@ def test_parameter_cwl_base_type_2():
 
 def test_parameter_cwl_complex_type():
     param_name = "input_array_string"
+    type_ = CWLArray(items=CWLTypes.STRING)
+
+def test_parameter_cwl_complex_type1():
+    param_name = "input_array_string"
     dict = {'items': 'string'}
     type_ = CWLArray(**dict)
     param = Parameter(id=param_name, type=type_)
