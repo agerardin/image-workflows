@@ -20,8 +20,6 @@ if __name__ == "__main__":
     precompute_slide = CWLTOOL_PATH / "PrecomputeSlide.cwl"
 
     clt_files = [bbbc, rename, ome_converter, montage, image_assembler,precompute_slide]
-    # clt_files = [bbbc, rename, ome_converter, montage, image_assembler]
-    # clt_files = [bbbc, rename, ome_converter]
     clts = [CommandLineTool.load(clt) for clt in clt_files]
     steps = [StepBuilder(clt)() for clt in clts]
 
@@ -64,9 +62,8 @@ if __name__ == "__main__":
 
     pprint([input.id for input in workflow.inputs])
 
-    # Now the workflow can be configured. We could hide that from the user.
+    # TODO Now the workflow can be configured. We could hide that from the user.
     wf : Workflow = StepBuilder(workflow)()
-
     config = wf.save_config()
 
     run_cwl(Path(f"{workflow.name}.cwl"), config_file=config)
