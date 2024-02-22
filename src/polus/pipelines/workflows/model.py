@@ -596,6 +596,7 @@ class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     id: ProcessId
+    class_: Optional[str] = Field(..., alias='class')
     requirements: Optional[list[ProcessRequirement]] = []
 
     @computed_field
@@ -678,7 +679,6 @@ class Workflow(Process):
     steps: list[WorkflowStep]
     
     from_builder: Optional[bool] = Field(False, exclude=True)
-    # TODO CHECK if we can factor in process
     class_: Optional[str] = Field(alias='class', default='Workflow')
     
     # TODO extract version from the definition instead.
@@ -697,7 +697,13 @@ class Workflow(Process):
     def _outputs(self) -> dict[ParameterId, WorkflowOutputParameter]:
         """internal index to retrieve outputs efficiently."""
         return {output.id: output for output in self.outputs}
-
+    
+    @field_validator("class_", mode="before")
+    @classmethod
+    def validate_class(cls, class_: str) -> str:
+        if class_ and class_ != "Workflow": 
+            raise Exception("bad class", class_) 
+        return class_
 
 class CommandLineTool(Process):
     """Represent a CommandLineTool.
@@ -710,7 +716,7 @@ class CommandLineTool(Process):
 
     # TODO CHECK move those to process most likely
     cwlVersion: Optional[str] = "v1.2"
-    class_: Optional[str] = Field(..., alias='class') 
+    class_: Optional[str] = Field(alias='class', default='CommandLineTool')
     doc: Optional[str] = ""
     label: Optional[str] = ""
 
@@ -723,6 +729,14 @@ class CommandLineTool(Process):
     def _outputs(self) -> dict[ParameterId, CommandOutputParameter]:
         """internal index to retrieve outputs efficiently."""
         return {output.id: output for output in self.outputs}
+
+
+    @field_validator("class_", mode="before")
+    @classmethod
+    def validate_class(cls, class_: str) -> str:
+        if class_ and class_ != "CommandLineTool": 
+            raise Exception("bad class", class_) 
+        return class_
 
 
 class ExpressionTool:
