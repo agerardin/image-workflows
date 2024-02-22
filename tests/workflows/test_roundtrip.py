@@ -1,17 +1,17 @@
-import pytest
+"""Test model roundtrip to check there is no loss of information
+when serializing our models.
+"""
 
+import pytest
 import yaml
 from pathlib import Path
+import filecmp
 import cwl_utils.parser as cwl_parser
+
 from polus.pipelines.workflows import (
     CommandLineTool, Workflow
 )
-import logging
-from rich import print
-import filecmp
-import shutil
 
-logger = logging.getLogger()
 
 @pytest.mark.skip(reason="not implemented")
 def test_parsing_doc_with_special_character_string():
@@ -20,19 +20,23 @@ def test_parsing_doc_with_special_character_string():
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])
 def test_clt_roundtrip(test_data_dir: Path, tmp_dir: Path, filename):
+    """Test roundtrip for clts."""
     __test_roundtrip(tmp_dir, test_data_dir, filename)
 
-# TODO CHECK
-@pytest.mark.xfail(reason="need to check workflow model.")
-@pytest.mark.parametrize("filename", ["workflow3.cwl"])
-def test_workflow_roundtrip(test_data_dir: Path, tmp_dir: Path, filename):
-    __test_roundtrip(tmp_dir, test_data_dir, filename)
+# # TODO CHECK
+# # @pytest.mark.xfail(reason="need to check workflow model.")
+# @pytest.mark.parametrize("filename", ["workflow3.cwl"])
+# def test_workflow_roundtrip(test_data_dir: Path, tmp_dir: Path, filename):
+#     """Test roundtrip for workflows."""
+#     __test_roundtrip(tmp_dir, test_data_dir, filename)
 
 
 def __test_roundtrip(tmp_dir: Path, test_data_dir: Path, filename: str):
-    """Test model roundtrip to check there is no loss of information
-    when serializing our model.
-    ."""
+    """Test model roundtrip.
+     
+    Test model roundtrip to check there is no loss of information
+    when serializing our models.
+    """
     cwl_file = test_data_dir / filename
     
     # standardized ref file from cwlparser

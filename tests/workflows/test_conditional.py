@@ -121,16 +121,17 @@ def test_build_conditional_workflow(conditional_workflow: Workflow):
     expected_count = 2
     assert input_count == expected_count, f"workflow should have {expected_count} input, got {input_count}."
 
-    wf_output = conditional_workflow.outputs[0]
-    assert isinstance(wf_output.type,CWLArray)
-    assert wf_output.type.items == CWLBasicType(type=CWLBasicTypeEnum.FILE)
-
     wf_input_msg = conditional_workflow.inputs[0]
-    assert isinstance(wf_input_msg.type,CWLArray)
-    assert wf_input_msg.type.items == CWLBasicType(type=CWLBasicTypeEnum.STRING)
+    assert wf_input_msg.type == CWLBasicType(type=CWLBasicTypeEnum.STRING)
 
-    wf_input_should_touch = conditional_workflow.inputs[1]
-    assert wf_input_should_touch.type == CWLBasicType(type=CWLBasicTypeEnum.INT)
+    wf_input_should_execute = conditional_workflow.inputs[1]
+    assert wf_input_should_execute.type == CWLBasicType(type=CWLBasicTypeEnum.INT)
+
+    wf_output1 = conditional_workflow.outputs[0]
+    assert wf_output1.type == CWLBasicType(type=CWLBasicTypeEnum.STRING)
+
+    wf_output2 = conditional_workflow.outputs[1]
+    assert wf_output2.type == CWLBasicType(type=CWLBasicTypeEnum.FILE)
 
     # test last step has a when clause
     touch_step = conditional_workflow.steps[-1]
@@ -139,8 +140,9 @@ def test_build_conditional_workflow(conditional_workflow: Workflow):
     # test the clause value
     assert when_clause == "$(inputs.should_execute < 1)"
     # check we do have a related workflow input
-    assert wf_input_should_touch.id == "should_touch"
-    assert touch_step.in_[0].source == wf_input_should_touch.id
+    assert touch_step.in_[1].id == "should_execute"
+    assert wf_input_should_execute.id == "workflow_conditional___step_touch_single___should_execute"
+    assert touch_step.in_[1].source == wf_input_should_execute.id
 
 
 def test_run_positive(conditional_workflow: Workflow):

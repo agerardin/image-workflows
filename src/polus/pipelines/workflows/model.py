@@ -533,6 +533,14 @@ class Process(BaseModel):
         name = Path(self.id).stem
         return name
     
+    # @field_serializer('requirements', when_used='always')
+    # def serialize_type(reqs:  WorkflowStepOutputs) -> list[str] :
+    #     """Do not serialize empty reqs list"""
+    #     if not reqs:
+    #         return None
+    #     else:
+    #         return reqs
+    
     @classmethod
     def _load(cls, cwl_file: Path) -> Any :
         cwl_file = file_exists(cwl_file)
@@ -586,8 +594,6 @@ class Process(BaseModel):
             file.write(yaml.dump(serialized_process))
             return file_path 
 
-    # TODO CHECK can we have equivalent of virtual methods in python?
-    # load() should be defined by subclass but declared here.
 
 class Workflow(Process):
     """Represents a CWL Workflow.
