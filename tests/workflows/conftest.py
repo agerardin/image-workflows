@@ -14,4 +14,4 @@ def tmp_dir() -> Iterator[Path]:
     tmp_dir = Path(tempfile.mkdtemp(suffix="tmp"))
     yield tmp_dir
     print(f"test folder: {tmp_dir}")
-    # shutil.rmtree(tmp_dir)
+    shutil.rmtree(tmp_dir)

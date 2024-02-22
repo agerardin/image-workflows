@@ -596,7 +596,10 @@ class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     id: ProcessId
-    class_: Optional[str] = Field(..., alias='class')
+    cwlVersion: str = "v1.2"
+    class_: str = Field(..., alias='class')
+    doc: Optional[str] = None
+    label: Optional[str] = None
     requirements: Optional[list[ProcessRequirement]] = []
 
     @computed_field
@@ -609,10 +612,18 @@ class Process(BaseModel):
     
     @model_serializer(mode="wrap", when_used="always")
     def serialize_model(self, next):
+        """Do not create requirements field if empty"""
         serialize_model = next(self)
         if not self.requirements:
-          serialize_model.pop("requirements")
+            serialize_model.pop("requirements")
         return serialize_model
+    
+    @field_validator("cwlVersion", mode="before")
+    @classmethod
+    def validate_class(cls, version: str) -> str:
+        if version and version != "v1.2": 
+            raise Exception(f"Unsupported version: {version}. Only v1.2 is supported.") 
+        return version
     
     @classmethod
     def _load(cls, cwl_file: Path) -> Any :
@@ -680,11 +691,6 @@ class Workflow(Process):
     
     from_builder: Optional[bool] = Field(False, exclude=True)
     class_: Optional[str] = Field(alias='class', default='Workflow')
-    
-    # TODO extract version from the definition instead.
-    # decide if we want to accomodate different versions
-    # or reject <1.2 altogether
-    cwlVersion: str = "v1.2"
 
     # TODO CHECK should factor that too
     @property
@@ -713,12 +719,7 @@ class CommandLineTool(Process):
     outputs: list[CommandOutputParameter]
     baseCommand: Optional[str] = None
     stdout: Optional[str] = None
-
-    # TODO CHECK move those to process most likely
-    cwlVersion: Optional[str] = "v1.2"
     class_: Optional[str] = Field(alias='class', default='CommandLineTool')
-    doc: Optional[str] = ""
-    label: Optional[str] = ""
 
     @property
     def _inputs(self) -> dict[ParameterId, CommandInputParameter]:
