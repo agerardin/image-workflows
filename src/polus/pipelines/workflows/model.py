@@ -1,6 +1,6 @@
 """Model for the workflow builder DSL."""
 
-from typing import Annotated
+from typing import Annotated, Union
 from pydantic import (
     BaseModel, BeforeValidator, ConfigDict, 
     SerializerFunctionWrapHandler, WrapSerializer, 
@@ -209,21 +209,65 @@ class SubworkflowFeatureRequirement(ProcessRequirement):
 class SoftwareRequirement(ProcessRequirement):
     """Software requirements. """
     class_: str = "SoftwareRequirement"
+    # TODO we could further constrained if needed
+    packages: list[Any]
 
 
 class DockerRequirement(ProcessRequirement):
     """Docker requirements. """
     class_: str = "DockerRequirement"
+    dockerPull: Optional[str] = None
+    dockerLoad: Optional[str] = None
+    dockerFile: Optional[str] = None
+    dockerImport: Optional[str] = None
+    dockerImageId: Optional[str] = None
+    dockerOutputDirectory: Optional[str] = None
+
 
 class ScatterFeatureRequirement(ProcessRequirement):
     """ScatterFeatureRequirement."""
     class_: str = "ScatterFeatureRequirement"
 
+
 class InlineJavascriptRequirement(ProcessRequirement):
     """InlineJavascriptRequirement"""
     class_: str = "InlineJavascriptRequirement"
+    expressionLib: Optional[list[str]] = None
 
 
+class InitialWorkDirRequirement(ProcessRequirement):
+    """InitialWorkDirRequirement"""
+    class_: str = "InitialWorkDirRequirement"
+    # TODO we could flesh this out
+    listing: list[Any]
+
+
+class EnvVarRequirement(ProcessRequirement):
+    """EnvVarRequirement"""
+    class_: str = "EnvVarRequirement"
+    # TODO CHECK if we need stricter typing
+    envDef: dict[str, Any]
+
+
+class ResourceRequirement(ProcessRequirement):
+    """ResourceRequirement"""
+    class_: str = "ResourceRequirement"
+    coresMin: Optional[Union[int, float]] = 1
+    coresMax: Optional[Union[int, float]] = None
+    ramMin: Optional[Union[int, float]] = 256
+    ramMax: Optional[Union[int, float]] = None
+    tmpdirMin: Optional[Union[int, float]] = None
+    tmpdirMax: Optional[Union[int, float]] = None
+    outdirMin: Optional[Union[int, float]] = None
+    outdirMax: Optional[Union[int, float]] = None
+
+
+class NetworkAccess(ProcessRequirement):
+    """NetworkAccess"""
+    class_: str = "NetworkAccess"
+    # TODO could make this stricter 
+    # https://www.commonwl.org/v1.2/CommandLineTool.html#NetworkAccess
+    networkAccess: Any
 class InputBinding(BaseModel):
     """Base class for any Input Binding."""
     pass
