@@ -11,6 +11,7 @@ from pydantic.functional_validators import (
     AfterValidator, field_validator
 )
 import cwl_utils.parser as cwl_parser
+from urllib.parse import urlparse, unquote
 from pathlib import Path
 import yaml
 from typing import Optional, Any
@@ -172,28 +173,6 @@ class BadCwlProcessFile(Exception):
     def __init__(self, cwl_file):
         super().__init__(f"Invalid cwl file : {cwl_file}")
 
-
-def validProcessId(id):
-    """Check the process id (which is an uri) points to an existing file on disk."""
-    # TODO need to figure out how to deal with from_builder=True
-    # where file is not yet created.
-    # try:
-    #     path = Path(unquote(urlparse(id).path))
-    #     path = file_exists(path)
-    # except Exception:
-    #     print(id)
-    #     raise Exception
-    # assert path.suffix == ".cwl"
-    return id
-    
-
-"""
-ProcessId needs to points to an existing file on disk
-in order to be pulled in a Workflow definition.
-However, when we first instantiated a newly buildworkfow, the 
-files does not yet exists on disk.
-"""
-ProcessId = Annotated[str, AfterValidator(validProcessId)]
 
 class ProcessRequirement(BaseModel):
     """Base class for all process requirements."""
@@ -578,6 +557,36 @@ class WorkflowStep(BaseModel):
             file.write(yaml.dump(config))
             return file_path 
 
+
+def processExistsLocally(id : str):
+    """Check the process id (which is an uri) points to an existing file on disk."""
+    # TODO check if we need that.
+    # NOTE when building new workflow, the file is not yet present on disk.
+    # NOTE we may have remote definitions. What to do then?
+    try:
+        path = Path(unquote(urlparse(id).path))
+        path = file_exists(path)
+    except Exception:
+        print(id)
+        raise Exception
+    assert path.suffix == ".cwl"
+    return id
+
+def processIdIsUri(id: str):
+    """Check we have a valid uri."""
+    # TODO throw custom exception?
+    Path(unquote(urlparse(id).path))
+    return id 
+
+"""
+ProcessId needs to points to an existing file on disk
+in order to be pulled in a Workflow definition.
+However, when we first instantiated a newly buildworkfow, the 
+files does not yet exists on disk.
+"""
+ProcessId = Annotated[str, AfterValidator(processIdIsUri)]
+
+
 class Process(BaseModel):
     """Process is the base class for Workflows,CommandLineTools
     (and also Expression Tools and Operations).
@@ -587,7 +596,6 @@ class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     id: ProcessId
-    # TODO switch to requirements instance
     requirements: Optional[list[ProcessRequirement]] = []
 
     @computed_field
@@ -636,6 +644,7 @@ class Process(BaseModel):
         else:
             raise UnsupportedProcessClass(process_class)
     
+
     def save(self, path = Path()) -> Path:
         """
         Create a cwl file.
@@ -648,9 +657,8 @@ class Process(BaseModel):
         if not path.exists():
             raise FileNotFoundError()
         if not path.is_dir():
-            # TODO create exception for this?
-            # TODO fallback (like checking parent and using it?)
-            raise Exception(f"{path} is not a directory.")
+            # TODO CHECK we could implement a fallback (like checking parent and using it)
+            raise NotADirectoryError(path)
 
         file_path = path / (self.name + ".cwl")
         serialized_process = self.model_dump(by_alias=True, exclude={'name'}, exclude_none=True)

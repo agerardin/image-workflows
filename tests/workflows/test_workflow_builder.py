@@ -1,18 +1,17 @@
-import pytest
+"""Test the workflow builder."""
 
+import pytest
 from pathlib import Path
-import logging
-from rich import print
 
 from polus.pipelines.workflows import (
     CommandLineTool, Workflow, StepBuilder, WorkflowBuilder, run_cwl
 )
 
 
-logger = logging.getLogger()
 
 @pytest.mark.parametrize("clts", [["echo_string.cwl", "uppercase2_wic_compatible2.cwl"]])
 def test_workflow_builder(test_data_dir: Path, clts: list[str]):
+    """Build a basic workflow from steps."""
     steps = []
     for filename in clts:
         cwl_file = test_data_dir / filename
@@ -31,7 +30,7 @@ def test_workflow_builder(test_data_dir: Path, clts: list[str]):
 
 @pytest.mark.parametrize("clts", [["echo_string.cwl", "uppercase2_wic_compatible2.cwl"]])
 def test_workflow_builder_with_linked_steps(test_data_dir: Path, clts: list[str]):
-    """We create a workflow"""
+    """Build a basic workflow from steps and link their ios."""
     steps = []
     for filename in clts:
         cwl_file = test_data_dir / filename
@@ -55,6 +54,7 @@ def test_workflow_builder_with_linked_steps(test_data_dir: Path, clts: list[str]
 
 @pytest.mark.parametrize("clts", [["echo_string.cwl", "uppercase2_wic_compatible2.cwl", "touch_single.cwl"]])
 def test_workflow_builder_with_subworkflows(test_data_dir: Path, clts: list[str]):
+    """Build and run a workflow containing another workflow and link their ios."""
     steps = []
     for filename in clts:
         cwl_file = test_data_dir / filename
@@ -82,11 +82,8 @@ def test_workflow_builder_with_subworkflows(test_data_dir: Path, clts: list[str]
 
     step_builder = StepBuilder(main_wf)
     step4 = step_builder()
-    print(main_wf)
 
     step4.wf4___step_wf3___wf3___step_echo_string___message = "test_message"
     config = step4.save_config()
 
     run_cwl(Path()/f"{main_wf.name}.cwl", config_file=config)
-
-    print(config)

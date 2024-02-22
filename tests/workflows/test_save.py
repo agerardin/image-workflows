@@ -1,3 +1,4 @@
+"""Test saving processes."""
 import pytest
 
 from pathlib import Path
@@ -10,19 +11,22 @@ from polus.pipelines.workflows import (
 logger = logging.getLogger()
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])
-def test_save_clt(test_data_dir: Path, filename):
+def test_save_clt(test_data_dir: Path, filename: str):
+    """Test we can save a clt."""
     cwl_file = test_data_dir / filename
     new_model = CommandLineTool.load(cwl_file)
     new_model.save()
 
 @pytest.mark.parametrize("filename", ["workflow5.cwl"])
-def test_save_workflow(test_data_dir: Path, filename):
+def test_save_workflow(test_data_dir: Path, filename: str):
+    """Test we can save a workflow."""
     cwl_file = test_data_dir / filename
     wf1 = Workflow.load(cwl_file)
     wf1.save()
 
 @pytest.mark.parametrize("filename", ["subworkflow1.cwl"])
-def test_save_subworkflow(test_data_dir: Path, filename):
+def test_save_subworkflow(test_data_dir: Path, filename: str):
+    """Test we can save a workflow with a subworkflow."""
     cwl_file = test_data_dir / filename
     wf2 = Workflow.load(cwl_file)
     wf2.save()
@@ -30,4 +34,5 @@ def test_save_subworkflow(test_data_dir: Path, filename):
 # TODO 
 @pytest.mark.skip(reason="not implemented")
 def test_recursive_save():
+    """Recursively saving all processes referenced."""
     pass
