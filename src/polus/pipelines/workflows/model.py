@@ -152,9 +152,19 @@ class IncompatibleValueError(Exception):
     def __init__(self, io_id, type, value):
         super().__init__(f"Cannot assign {value} to {io_id} of type {type}") 
 
-
 class CannotParseAdditionalInputParam(Exception):
+    """Raised if the model for an additional input is not valid."""
     pass
+
+class UnsupportedProcessClass(Exception):
+    """Raised if the cwl process type is not supported."""
+    def __init__(self, class_):
+        super().__init__(f"unsupported cwl process class : {class_}")
+
+class BadCwlProcessFile(Exception):
+    """Raised if the cwl process file cannot be parsed."""
+    def __init__(self, cwl_file):
+        super().__init__(f"Invalid cwl file : {cwl_file}")
 
 
 def validProcessId(id):
@@ -523,6 +533,37 @@ class Process(BaseModel):
         name = Path(self.id).stem
         return name
     
+    @classmethod
+    def _load(cls, cwl_file: Path) -> Any :
+        cwl_file = file_exists(cwl_file)
+        cwl_process = cwl_parser.load_document_by_uri(cwl_file)
+        # TODO CHECK save rewrite ids and runs ref.
+        # Make sure this is not an issue.
+        # In particular rewrite runs can be an issue if not managed properly
+        # (could have clashing definitions).
+        yaml_clt = cwl_parser.save(cwl_process)
+        return yaml_clt
+
+    @classmethod
+    def load(cls, cwl_file: Path) -> 'Process':
+        """Load a Process from a cwl file.
+        
+        Factory method for all subclasses.
+        We use the reference cwl parser to get a standardized description.
+        """
+        try:
+            yaml_clt = cls._load(cwl_file)
+            process_class = yaml_clt['class']
+        except:
+            raise BadCwlProcessFile(cwl_file)
+
+        if process_class == "Workflow":
+            return Workflow(**yaml_clt)
+        elif yaml_clt['class'] == "CommandLineTool":
+            return CommandLineTool(**yaml_clt)
+        else:
+            raise UnsupportedProcessClass(process_class)
+    
     def save(self, path = Path()) -> Path:
         """
         Create a cwl file.
@@ -580,22 +621,6 @@ class Workflow(Process):
         """internal index to retrieve outputs efficiently."""
         return {output.id: output for output in self.outputs}
 
-    # TODO See comment on CommandLineTool.load
-    @classmethod
-    def load(cls, clt_file: Path) -> 'Workflow':
-        """Load a Workflow from a cwl workflow file.
-        
-        We use the reference cwl parser to get a standardized description.
-        """
-        clt_file = file_exists(clt_file)
-        cwl_clt = cwl_parser.load_document_by_uri(clt_file)
-
-        # TODO CHECK save rewrite ids and runs ref.
-        # Make sure this is not an issue.
-        # In particular rewrite runs can be an issue if not managed properly
-        # (could have clashing definitions).
-        yaml_clt = cwl_parser.save(cwl_clt)
-        return cls(**yaml_clt) 
 
 class CommandLineTool(Process):
     """Represent a CommandLineTool.
@@ -622,19 +647,6 @@ class CommandLineTool(Process):
         """internal index to retrieve outputs efficiently."""
         return {output.id: output for output in self.outputs}
 
-    # TODO either check type is commandLine
-    # or allow virtual definition in parent class and implement
-    # in each subclass.
-    @classmethod
-    def load(cls, clt_file: Path) -> 'CommandLineTool':
-        """Load a CLT from a cwl clt file.
-        
-        We use the reference cwl parser to get a standardized description.
-        """
-        clt_file = file_exists(clt_file)
-        cwl_clt = cwl_parser.load_document_by_uri(clt_file)
-        yaml_clt = cwl_parser.save(cwl_clt)
-        return cls(**yaml_clt) 
 
 class ExpressionTool:
     NotImplemented
