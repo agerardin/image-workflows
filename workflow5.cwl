@@ -8,7 +8,6 @@ outputs:
 - id: file
   outputSource: touch/output
   type: File
-requirements: []
 steps:
 - id: echo
   in:

@@ -1,9 +1,15 @@
-from typing import Annotated, Union
+"""Model for the workflow builder DSL."""
+
+from typing import Annotated
 from pydantic import (
-    BaseModel, BeforeValidator, ConfigDict, Field, SerializerFunctionWrapHandler, ValidationError,
-    computed_field, WrapSerializer, field_serializer
+    BaseModel, BeforeValidator, ConfigDict, 
+    SerializerFunctionWrapHandler, WrapSerializer, 
+    Field, computed_field, field_serializer,
+    model_serializer
 )
-from pydantic.functional_validators import AfterValidator, field_validator
+from pydantic.functional_validators import (
+    AfterValidator, field_validator
+)
 import cwl_utils.parser as cwl_parser
 from pathlib import Path
 import yaml
@@ -192,22 +198,36 @@ ProcessId = Annotated[str, AfterValidator(validProcessId)]
 class ProcessRequirement(BaseModel):
     """Base class for all process requirements."""
     model_config = ConfigDict(populate_by_name=True)
+    class_: str = Field(..., alias='class')
+
 
 class SubworkflowFeatureRequirement(ProcessRequirement):
     """Needed if a Workflow references other Workflows."""
-    class_: Optional[str] = Field("SubworkflowFeatureRequirement", alias='class')
+    class_ : str = "SubworkflowFeatureRequirement"
+
 
 class SoftwareRequirement(ProcessRequirement):
     """Software requirements. """
-    NotImplemented
+    class_: str = "SoftwareRequirement"
+
 
 class DockerRequirement(ProcessRequirement):
     """Docker requirements. """
-    NotImplemented 
+    class_: str = "DockerRequirement"
+
+class ScatterFeatureRequirement(ProcessRequirement):
+    """ScatterFeatureRequirement."""
+    class_: str = "ScatterFeatureRequirement"
+
+class InlineJavascriptRequirement(ProcessRequirement):
+    """InlineJavascriptRequirement"""
+    class_: str = "InlineJavascriptRequirement"
+
 
 class InputBinding(BaseModel):
     """Base class for any Input Binding."""
     pass
+
 
 # TODO CHANGE name. For now stick to cwl_parser naming
 # but should be CLTInputBinding
@@ -513,7 +533,6 @@ class WorkflowStep(BaseModel):
             # ex: we generate list but we could also generate some dictionaries.
             file.write(yaml.dump(config))
             return file_path 
-    
 
 class Process(BaseModel):
     """Process is the base class for Workflows,CommandLineTools
@@ -524,6 +543,8 @@ class Process(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     id: ProcessId
+    # TODO switch to requirements instance
+    requirements: Optional[list[ProcessRequirement]] = []
 
     @computed_field
     @property
@@ -533,13 +554,12 @@ class Process(BaseModel):
         name = Path(self.id).stem
         return name
     
-    # @field_serializer('requirements', when_used='always')
-    # def serialize_type(reqs:  WorkflowStepOutputs) -> list[str] :
-    #     """Do not serialize empty reqs list"""
-    #     if not reqs:
-    #         return None
-    #     else:
-    #         return reqs
+    @model_serializer(mode="wrap", when_used="always")
+    def serialize_model(self, next):
+        serialize_model = next(self)
+        if not self.requirements:
+          serialize_model.pop("requirements")
+        return serialize_model
     
     @classmethod
     def _load(cls, cwl_file: Path) -> Any :
@@ -604,8 +624,7 @@ class Workflow(Process):
     inputs: list[WorkflowInputParameter]
     outputs: list[WorkflowOutputParameter]
     steps: list[WorkflowStep]
-    # TODO CHECK which can be factor in process?
-    requirements: Optional[list[dict[str, object]]] = []
+    
     from_builder: Optional[bool] = Field(False, exclude=True)
     # TODO CHECK if we can factor in process
     class_: Optional[str] = Field(alias='class', default='Workflow')
@@ -934,11 +953,11 @@ class  WorkflowBuilder():
             # worklfow_outputs.append(workflow_output)
         if scatterRequirement:
             # TODO CHECK cwl spec. if multiple inputs, we also need to add a scatter method.
-            requirements.append({"class": "ScatterFeatureRequirement"})
+            requirements.append(ScatterFeatureRequirement())
         if subworkflowFeatureRequirement:
-            requirements.append({"class": "SubworkflowFeatureRequirement"})                
+            requirements.append(SubworkflowFeatureRequirement())                
         if inlineJavascriptRequirement:
-            requirements.append({"class": "InlineJavascriptRequirement"})
+            requirements.append(InlineJavascriptRequirement())
 
         kwds.setdefault("inputs", workflow_inputs)
         kwds.setdefault("outputs", workflow_outputs)

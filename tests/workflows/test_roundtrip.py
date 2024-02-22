@@ -23,12 +23,11 @@ def test_clt_roundtrip(test_data_dir: Path, tmp_dir: Path, filename):
     """Test roundtrip for clts."""
     __test_roundtrip(tmp_dir, test_data_dir, filename)
 
-# # TODO CHECK
-# # @pytest.mark.xfail(reason="need to check workflow model.")
-# @pytest.mark.parametrize("filename", ["workflow3.cwl"])
-# def test_workflow_roundtrip(test_data_dir: Path, tmp_dir: Path, filename):
-#     """Test roundtrip for workflows."""
-#     __test_roundtrip(tmp_dir, test_data_dir, filename)
+
+@pytest.mark.parametrize("filename", ["workflow3.cwl"])
+def test_workflow_roundtrip(test_data_dir: Path, tmp_dir: Path, filename):
+    """Test roundtrip for workflows."""
+    __test_roundtrip(tmp_dir, test_data_dir, filename)
 
 
 def __test_roundtrip(tmp_dir: Path, test_data_dir: Path, filename: str):

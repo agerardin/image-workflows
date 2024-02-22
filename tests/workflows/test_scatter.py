@@ -31,9 +31,8 @@ def test_load_scatter_wf(test_data_dir: Path, tmp_dir: Path, filename):
 
     # Check we do have a scatter feature requirement
     assert "ScatterFeatureRequirement" in set(
-        [req['class'] for req in scatter_wf.requirements]
+        [req.class_ for req in scatter_wf.requirements]
         )
-
 
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])
