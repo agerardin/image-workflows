@@ -1,14 +1,9 @@
-from polus.pipelines.workflows.model import Parameter
-from polus.pipelines.workflows.model import CWLType, CWLArray, CWLBasicTypeEnum, CWLBasicType
+"""Test building parameters of various types."""
 
-def test_parameter_cwl_base_type():
-    param_name = "input_string"
-    type = CWLBasicType(type=CWLBasicTypeEnum.STRING)
-    dict = {"id": param_name, "type": type}
-    param = Parameter(**dict)
-    assert param.id == param_name
-    assert param.optional == False
-    assert param.type == type
+from polus.pipelines.workflows.model import Parameter
+from polus.pipelines.workflows.model import (
+    CWLArray, CWLBasicTypeEnum, CWLBasicType
+)
 
 
 def test_parameter_cwl_complex_type_model():
@@ -23,6 +18,7 @@ def test_parameter_cwl_complex_type_model():
     assert param.id == param_name
     assert param.optional == False
     assert param.type == type
+
 
 def test_parameter_cwl_complex_type_raw():
     """Test creating a parameter of type array from CWLArray instance.
@@ -39,6 +35,7 @@ def test_parameter_cwl_complex_type_raw():
     assert param.optional == False
     assert param.type == param_type
 
+
 def test_parameter_cwl_complex_type_dump_model():
     """Test creating a parameter of type array from dict."""
     param_name = "input_array_string"
@@ -52,7 +49,20 @@ def test_parameter_cwl_complex_type_dump_model():
     assert param.optional == False
     assert param.type == type
 
-def test_parameter_raw_type():
+
+def test_parameter_cwl_base_type():
+    "Test creating a param of type string."
+    param_name = "input_string"
+    type = CWLBasicType(type=CWLBasicTypeEnum.STRING)
+    dict = {"id": param_name, "type": type}
+    param = Parameter(**dict)
+
+    assert param.id == param_name
+    assert param.optional == False
+    assert param.type == type
+
+
+def test_parameter_cwl_base_type_raw():
     "Test creating a param of type string."
     param_name = "input1"
     type = "string"
@@ -63,6 +73,7 @@ def test_parameter_raw_type():
     assert param.id == param_name
     assert param.optional == False
     assert param.type == param_type
+
 
 def test_parameter_serialization():
     """Test the serialization of a parameter."""

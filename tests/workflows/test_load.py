@@ -1,32 +1,30 @@
-import pytest
+"""Test loading and parsing cwl files."""
 
+import pytest
 from pathlib import Path
-import logging
-from rich import print
 
 from polus.pipelines.workflows import (
-    CommandLineTool, Workflow
+    CommandLineTool, Workflow, Process
 )
 
-logger = logging.getLogger()
 
 @pytest.mark.parametrize("filename", ["echo_string.cwl"])
 def test_load_clt(test_data_dir: Path, filename):
+    """Test Command Line Tool factory method."""
     cwl_file = test_data_dir / filename
-    clt = CommandLineTool.load(cwl_file)
-    print(clt)
+    CommandLineTool.load(cwl_file)
 
-@pytest.mark.parametrize("filename", ["workflow5.cwl","workflow7.cwl"])
-def test_load_workflow(test_data_dir: Path, tmp_dir: Path, filename):
+@pytest.mark.parametrize("filename", ["workflow5.cwl", "workflow7.cwl", "subworkflow1.cwl"])
+def test_load_workflow(test_data_dir: Path, filename):
+    """Test Workflow factory method."""
     cwl_file = test_data_dir / filename
-    wf1 = Workflow.load(cwl_file)
-    print(wf1)
+    Workflow.load(cwl_file)
 
-@pytest.mark.parametrize("filename", ["subworkflow1.cwl"])
-def test_load_subworkflow(test_data_dir: Path, tmp_dir: Path, filename):
+@pytest.mark.parametrize("filename", ["echo_string.cwl", "workflow5.cwl"])
+def test_load_process(test_data_dir: Path, filename):
+    """Test Process factory method."""
     cwl_file = test_data_dir / filename
-    wf2 = Workflow.load(cwl_file)
-    print(wf2)
+    Process.load(cwl_file)
 
 # TODO So cwlparser does not check the referenced clts,
 # It justs check the definition is valid at the first level.

@@ -1,14 +1,18 @@
-from typing import Iterator
+"""Test conditional clauses."""
+
 import pytest
 from pathlib import Path
-import cwl_utils.parser as cwl_parser
+from urllib.parse import urlparse
+
 from polus.pipelines.workflows import (
     CommandLineTool, Workflow,
     StepBuilder, WorkflowBuilder,
     run_cwl
 )
-from urllib.parse import urlparse
-from polus.pipelines.workflows.model import CWLArray, CWLBasicType, CWLBasicTypeEnum, CWLType
+from polus.pipelines.workflows.model import (
+    CWLArray, CWLBasicType, CWLBasicTypeEnum
+)
+
 
 PARAMS = [(["workflow3.cwl"],["touch_single.cwl"])]
 IDS = ["conditional-workflow"]
@@ -17,22 +21,20 @@ def conditional_workflow(
     test_data_dir: Path,
     request: pytest.FixtureRequest
     ) -> Workflow:
-    """Build a conditional workflow"""
+    """Build a conditional workflow fixture."""
 
     workflows, clts = request.param
 
     steps = []
 
-    #TODO implement a load method in process?
-
-    # load clt
+    # create the subworkflow step
     for filename in workflows:
         cwl_file = test_data_dir / filename
         clt = Workflow.load(cwl_file)
         step = StepBuilder(clt)()
         steps.append(step)
 
-    # load workflow
+    # create the step with the conditional clause
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
@@ -56,7 +58,7 @@ def conditional_workflow(
 
 @pytest.mark.parametrize("filename", ["conditional-workflow.cwl"])
 def test_load_conditional_wf(test_data_dir: Path, tmp_dir: Path, filename: str):
-    """Test that we can load  a workflow with a conditional step."""
+    """Test that we can load a workflow with a conditional step."""
     cwl_file = test_data_dir / filename
     wf = Workflow.load(cwl_file)
     wf.save(tmp_dir)
@@ -80,7 +82,6 @@ def test_load_conditional_wf(test_data_dir: Path, tmp_dir: Path, filename: str):
     when_clause = touch_step.when   
     assert when_clause
     # test the clause value
-    # TODO we should provide more functionalities around this
     assert when_clause == "$(inputs.should_execute < 1)"
     # check we do have a related workflow input
     assert wf_input_should_touch.id == "should_touch"
@@ -113,12 +114,33 @@ def test_build_conditional_step(test_data_dir: Path,
     assert should_execute.type == CWLBasicType(type=CWLBasicTypeEnum.INT)
 
 
-def test_build_and_run_conditional_workflow(conditional_workflow: Workflow):
+def test_build_conditional_workflow(conditional_workflow: Workflow):
     """Test th workflow is correctly built."""
 
     input_count = len(conditional_workflow.inputs)
     expected_count = 2
-    assert input_count == expected_count, f"workflow should have {expected_count} input, got {input_count}." 
+    assert input_count == expected_count, f"workflow should have {expected_count} input, got {input_count}."
+
+    wf_output = conditional_workflow.outputs[0]
+    assert isinstance(wf_output.type,CWLArray)
+    assert wf_output.type.items == CWLBasicType(type=CWLBasicTypeEnum.FILE)
+
+    wf_input_msg = conditional_workflow.inputs[0]
+    assert isinstance(wf_input_msg.type,CWLArray)
+    assert wf_input_msg.type.items == CWLBasicType(type=CWLBasicTypeEnum.STRING)
+
+    wf_input_should_touch = conditional_workflow.inputs[1]
+    assert wf_input_should_touch.type == CWLBasicType(type=CWLBasicTypeEnum.INT)
+
+    # test last step has a when clause
+    touch_step = conditional_workflow.steps[-1]
+    when_clause = touch_step.when   
+    assert when_clause
+    # test the clause value
+    assert when_clause == "$(inputs.should_execute < 1)"
+    # check we do have a related workflow input
+    assert wf_input_should_touch.id == "should_touch"
+    assert touch_step.in_[0].source == wf_input_should_touch.id
 
 
 def test_run_positive(conditional_workflow: Workflow):

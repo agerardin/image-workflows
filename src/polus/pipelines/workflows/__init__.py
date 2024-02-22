@@ -1,7 +1,8 @@
 from polus.pipelines.workflows.model import (
+    Process,
     CommandLineTool,
-    WorkflowStep,
     Workflow,
+    WorkflowStep,
     WorkflowBuilder,
     StepBuilder
 )
