@@ -8,38 +8,43 @@ from polus.pipelines.workflows import (
 )
 
 
-
 @pytest.mark.parametrize("clts", [["echo_string.cwl", "uppercase2_wic_compatible2.cwl"]])
 def test_workflow_builder(test_data_dir: Path, clts: list[str]):
     """Build a basic workflow from steps."""
+    steps_input_count = 0
+    steps_output_count = 0
     steps = []
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
-        step_builder = StepBuilder(clt)
-        step = step_builder()
+        step = StepBuilder(clt)()
+        steps_input_count += len(step.in_)
+        steps_output_count += len(step.out)
         steps.append(step)
-
     wf_builder = WorkflowBuilder("wf3", steps=steps)
     wf: Workflow = wf_builder()
 
     input_count = len(wf.inputs)
-    expected_count = 3
-    assert input_count == expected_count, f"workflow should have {expected_count} input, got {input_count}." 
+    assert input_count == steps_input_count, f"workflow should have {steps_input_count} input, got {input_count}." 
+    output_count = len(wf.outputs)
+    assert output_count == steps_output_count, f"workflow should have {steps_output_count} input, got {output_count}."
 
 
 @pytest.mark.parametrize("clts", [["echo_string.cwl", "uppercase2_wic_compatible2.cwl"]])
 def test_workflow_builder_with_linked_steps(test_data_dir: Path, clts: list[str]):
     """Build a basic workflow from steps and link their ios."""
+    steps_input_count = 0
+    steps_output_count = 0
     steps = []
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
-        step_builder = StepBuilder(clt)
-        step = step_builder()
+        step = StepBuilder(clt)()
+        steps_input_count += len(step.in_)
+        steps_output_count += len(step.out)
         steps.append(step)
 
-
+    # link steps
     (step1, step2) = steps
     step2.message = step1.message_string
     step2.uppercase_message = step1.message_string
@@ -48,7 +53,9 @@ def test_workflow_builder_with_linked_steps(test_data_dir: Path, clts: list[str]
     wf: Workflow = wf_builder()
 
     input_count = len(wf.inputs)
-    expected_count = 1
+    # we have linked 2 inputs from the second step
+    # so they should not be part of the final model.
+    expected_count = steps_input_count - 2
     assert input_count == expected_count, f"workflow should have {expected_count} input, got {input_count}." 
 
 
@@ -59,10 +66,8 @@ def test_workflow_builder_with_subworkflows(test_data_dir: Path, clts: list[str]
     for filename in clts:
         cwl_file = test_data_dir / filename
         clt = CommandLineTool.load(cwl_file)
-        print(clt)
         step_builder = StepBuilder(clt)
         step = step_builder()
-        print(step)
         steps.append(step)
 
     (step1, step2, step3) = steps

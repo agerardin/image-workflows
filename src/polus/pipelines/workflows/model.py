@@ -185,11 +185,15 @@ class UnsupportedProcessClass(Exception):
     def __init__(self, class_):
         super().__init__(f"unsupported cwl process class : {class_}")
 
+
 class BadCwlProcessFile(Exception):
     """Raised if the cwl process file cannot be parsed."""
     def __init__(self, cwl_file):
         super().__init__(f"Invalid cwl file : {cwl_file}")
 
+
+class UnsupportedCaseError(Exception):
+    pass
 
 class ProcessRequirement(BaseModel):
     """Base class for all process requirements."""
@@ -382,7 +386,6 @@ class WorkflowStepInput(BaseModel):
 
 def generate_cwl_source_repr(step_id, io_id):
     return step_id + "/" + io_id
-
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
     """This a special kind of WorkflowStepInput that can
@@ -784,6 +787,8 @@ class StepBuilder():
             )
             for input in process.inputs]
 
+        # TODO Check spec. If scatter is present all outputs
+        # should be scattered.
         outputs = [
             AssignableWorkflowStepOutput(
                 id= output.id, 
@@ -797,12 +802,9 @@ class StepBuilder():
         # Generate additional inputs.
         # For example,if the conditional clause contains unknown inputs.
         # It could also be to generate fake inputs for wic compatibility.
-        # TODO REVISIT that later after some use.
-
-        # parse to workflow step input to detect basic problems early.
-        # 
         if add_inputs:
             try:
+                # parse into workflow step input to detect basic problems early.
                 add_inputs = [WorkflowInputParameter(**input) for input in add_inputs]    
             except:
                 raise CannotParseAdditionalInputParam("additional input description is invalid!")
@@ -846,7 +848,7 @@ class StepBuilder():
             )
 
         # For a workflow, bubble up values assigned to its steps.
-        # The become values of the workflow inputs.
+        # Those become values of the workflow inputs.
         if isinstance(process, Workflow):
             for step in process.steps:
                 for input in step.in_:
@@ -854,7 +856,6 @@ class StepBuilder():
                         if input.source in self.step._inputs:
                             self.step._inputs[input.source].value = input.value
                             assignable_step_input = self.step._inputs[input.source]
-                            print(assignable_step_input)
 
 
     def _promote_cwl_type(self, type: CWLType):
@@ -874,6 +875,7 @@ class  WorkflowBuilder():
     Enable creating workflow dynamically.
     """
     def __init__(self, id: str, *args: Any, **kwds: Any):
+
         kwds.setdefault("steps", [])
         # Collect all step inputs and create a workflow input for each
         # Collect all step outputs and create a workflow output for each
@@ -881,9 +883,8 @@ class  WorkflowBuilder():
         # TODO Make this optional.
         # TODO We could also reduced workflow outputs to only those 
         # which are not already connected.
-        # TODO Similarly we could have an option to hide/rename steps the list 
-        # of workflow inputs.
-
+        # TODO Similarly we could have an option to hide/rename 
+        # workflow inputs.
         # TODO Many possible strategies here: 
         # We could change that, make that a user provided option,
         # generate simpler names if no clash are detected 
@@ -891,6 +892,14 @@ class  WorkflowBuilder():
         def generate_workflow_io_id(worklflow_id : str, step_id: str, io_id: str):
             """generate id for workflow ios. Note that ('/') are forbidden."""
             return worklflow_id + "___" + step_id + "___" + io_id
+        
+        def generate_default_input_path(step, input):
+            """Generate default input path for synthetic directories or files."""
+            # NOTE there is a bug in cwl that prevents creating nested directories.
+            # When copying back staged data, cwl only copies the leaf directory. 
+            # Name clashes will occur if several inputs have the same name.
+            # so we need to create unique directory names for each input.
+            return Path() / (step.id + "__" + input.id)
 
         workflow_inputs = []
         workflow_outputs = []
@@ -898,65 +907,66 @@ class  WorkflowBuilder():
         scatterRequirement = False
         subworkflowFeatureRequirement = False
         inlineJavascriptRequirement = False
+
         for step in kwds.get("steps"):
-            # TODO CHECK best way to test a list is not empty?
-            if not not step.scatter:
+            if step.scatter:
                 scatterRequirement = True
-            if not not step.when:
+            if step.when:
                 inlineJavascriptRequirement = True
             for input in step.in_:
-                # Only create workflows inputs and connect to them them
+                # Only create workflows inputs and connect to them
                 # if step inputs are not already connected to another step output.
-                # TODO switch to continue logic
-                if input.source == 'UNSET':
+                if input.source != 'UNSET':
+                    continue
 
-                    # Ignore unset optional inputs
-                    # TODO CHECK again but nothing else seems to be possible.
-                    # IMO this is a problem with the standard.
-                    if input.optional and input.value is None:
-                        continue
+                # Ignore unset optional inputs
+                # NOTE needed because the cwl standard does not allow for unset values.
+                if input.optional and input.value is None:
+                    continue
 
-                    # if a step input is also a step output,
-                    # and this step output is link to other step inputs,
-                    # then we can generate a default value for this input
-                    # and bubble it up to the workflow input value
-                    # this also allow further manual customization.
-                    # TODO we could also expose that the user and have him customized
-                    # the generated name.
-                    # TODO CHECK this logic again, it may probably be written more simply.
-                    if input.id in step._outputs:
-                        _step_id = step.id
-                        _same_name_output = step._outputs[input.id]
-                        _ref = _step_id + "/" + _same_name_output.id
-                        for _other_step in kwds.get("steps"):
-                            for _input in _other_step.in_:
-                                if _input.source == _ref:
-                                    if _input.type != CWLBasicType(type=CWLBasicTypeEnum.DIRECTORY):
-                                        # CHECK probably untrue, what about files, array of files etc...
-                                        raise Exception("should only be directory here!")
-                                    else:
-                                        # TODO the last thing to do is to create a input value 
-                                        # that we can pass to the source workflow input.
-                                        # NOTE there is a bug in cwl that prevents to create nested directories.
-                                        # it seems that when copying back staged data, cwl only copies the last
-                                        # directory. Name clashes will occur if several inputs have the same name.
-                                        # input.value = Path() / _step_id / input.id
-                                        input.value = Path() / (_step_id + "__" + input.id)
-                                        # TODO REMOVE temp hack for conveniently running those workflows,
-                                        # figure out how to tell cwl to create the directories first
-                                        # something about listing files or something
-                                        input.value.mkdir(parents=True, exist_ok=True)
+                # if a step input is also a step output,
+                # and this step output is linked to other step inputs,
+                # then we need to generate a default value for this input
+                # and bubble it up as a workflow input value.
+                # This allows further manual customization.
+                # TODO we could also expose that the user and have him customized
+                # the generated name.
+                # TODO CHECK this logic again, it may probably be written more simply.
+                if input.id in step._outputs:
+                    # if input is output, build its source representation
+                    _ref = generate_cwl_source_repr(step.id, input.id)
+                    # check if another step input reference this output
+                    for _other_step in kwds.get("steps"):
+                        if _other_step == step:
+                            continue
+                        for _input in _other_step.in_:
+                            if _input.source == _ref:
+                                # NOTE test is quite indirect.
+                                # a better approach would be to recursively check complex types
+                                # for base types.
+                                if (isinstance(_input.type, CWLBasicType)
+                                and (
+                                    _input.type != CWLBasicType(type=CWLBasicTypeEnum.DIRECTORY)
+                                    or _input.type != CWLBasicType(type=CWLBasicTypeEnum.FILE))
+                                ):
+                                    raise UnsupportedCaseError("""Error while building workflow.
+                                        Error generating while default workflow inputs.
+                                        Unexpected type: {_input.type}.""")
+                                else:
+                                    input.value = generate_default_input_path(step, input)
+                                    # TODO REMOVE temp hack for conveniently running those workflows,
+                                    # figure out how to tell cwl to create the directories first
+                                    # something about listing files or something
+                                    input.value.mkdir(parents=True, exist_ok=True)
 
-                    
-                    # TODO create method, we could also wrap CWLTypes in a pydantic model
-                    input_type = input.type
-                    workflow_input_id = generate_workflow_io_id(id, step.id, input.id)
-                    workflow_input = WorkflowInputParameter(
-                        id= workflow_input_id,
-                        type= input_type
-                        )
-                    input.source = workflow_input_id
-                    workflow_inputs.append(workflow_input)
+                input_type = input.type
+                workflow_input_id = generate_workflow_io_id(id, step.id, input.id)
+                workflow_input = WorkflowInputParameter(
+                    id= workflow_input_id,
+                    type= input_type
+                    )
+                input.source = workflow_input_id
+                workflow_inputs.append(workflow_input)
 
             for output in step.out:
                     output_type = output.type
@@ -968,6 +978,11 @@ class  WorkflowBuilder():
                         outputSource= step.id + "/" + output.id
                     )
                     workflow_outputs.append(workflow_output)
+                    
+            # TODO switch later
+            # step_process = Process.load(step.run)
+            # if step_process.class_ == "Workflow":
+            #     subworkflowFeatureRequirement = True
 
             # TODO That is where a context of loaded CLTs could be helpful.
             # So we don't keep reloading the same models.
