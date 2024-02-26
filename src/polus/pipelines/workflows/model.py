@@ -549,13 +549,13 @@ class WorkflowStep(BaseModel):
             print(f"input  found {name}")
             return self._inputs[name]
 
-    # TODO we probably could do better than having a adhoc serialization function
+
     def serialize_value(self, input : AssignableWorkflowStepInput):
         """Serialize input values."""
         return input.type.serialize_value(input.value)
+    
 
-
-    def save_config(self, path = Path()) -> Path:
+    def save_config(self, path: Path = Path()) -> Path:
         """Save the workflow configuration.
         Args:
             - path : the path to the directory in which to save the config.
@@ -573,7 +573,7 @@ class WorkflowStep(BaseModel):
         file_path = path / (self.id + ".yaml")
         with open(file_path, "w", encoding="utf-8") as file:
             # TODO CHECK how configurable this process is.
-            # ex: we generate list but we could also generate some dictionaries.
+            # ex: we generate list but we could also generate dictionaries.
             file.write(yaml.dump(config))
             return file_path 
 
@@ -652,8 +652,7 @@ class Process(BaseModel):
     
     @field_validator("cwlVersion", mode="before")
     @classmethod
-    def validate_class(cls, version: str) -> str:
-        # TODO Test this work as intended
+    def validate_version(cls, version: str) -> str:
         if version and version != "v1.2": 
             raise Exception(f"Unsupported version: {version}. Only v1.2 is supported.") 
         return version

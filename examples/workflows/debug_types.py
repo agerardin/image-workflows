@@ -24,7 +24,7 @@ class CWLBasicTypeEnum(Enum):
     FILE = "File"
     DIRECTORY = "Directory"
 
-    def isValidType(self, value: Any):
+    def is_valid_type(self, value: Any):
         """Check if the python variable type can be assigned to this cwl type."""
         if self == CWLBasicTypeEnum.STRING:
             return isinstance(value, str)
@@ -64,9 +64,9 @@ class CWLBasicTypes(CWLTypes_):
     """Model that wraps an enum representing the basic types."""
     type: CWLBasicTypeEnum
 
-    def isValidType(self, value):
+    def is_valid_type(self, value):
         """Check if the given value is represented by this type."""
-        return self.type.isValidType(value)
+        return self.type.is_valid_type(value)
 
     
 class CWLArray(CWLTypes_):
@@ -74,13 +74,13 @@ class CWLArray(CWLTypes_):
     type: str = 'array'
     items: CWLTypes
 
-    def isValidType(self, value : Any):
+    def is_valid_type(self, value : Any):
         """Check the python variable type can be assigned to this cwl type."""
         if not isinstance(value, list):
             return False
         # TODO we only check the first value
         # should we check all values?
-        return self.items.isValidType(value[0])
+        return self.items.is_valid_type(value[0])
 
 
 class WorklfowInput(BaseModel):
@@ -94,14 +94,14 @@ print(input.model_dump())
 
 assert input.model_dump() == {'type': 'string'}
 
-assert input.type.isValidType("ok")
+assert input.type.is_valid_type("ok")
 
 array_dict = { "type": {"type": "array", "items": "string"}}
 input = WorklfowInput(**array_dict)
 print(input)
 print(input.model_dump())
 
-assert input.type.isValidType(["ok"])
+assert input.type.is_valid_type(["ok"])
 
 assert input.model_dump() == {'type': {'type': 'array', 'items': 'string'}}
 
@@ -121,12 +121,12 @@ print(input.model_dump())
 
 assert input.model_dump() == {'type': {'type': 'array', 'items': {'type': 'array', 'items': 'string'}}}
 
-assert input.type.isValidType([["ok"]])
-assert not input.type.isValidType([[4]])
-assert not input.type.isValidType([4])
-assert not input.type.isValidType([[["ok"]]])
+assert input.type.is_valid_type([["ok"]])
+assert not input.type.is_valid_type([[4]])
+assert not input.type.is_valid_type([4])
+assert not input.type.is_valid_type([[["ok"]]])
 
-assert input.type.isValidType([["ok"],[4]])
+assert input.type.is_valid_type([["ok"],[4]])
 
 
 array_dict = { "type": {"type": "array", "items": "File"}}
@@ -134,4 +134,4 @@ input = WorklfowInput(**array_dict)
 print(input)
 print(input.model_dump())
 
-assert input.type.isValidType([Path("path/to/file")])
+assert input.type.is_valid_type([Path("path/to/file")])

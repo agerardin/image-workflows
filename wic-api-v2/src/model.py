@@ -421,7 +421,6 @@ class Workflow(Process):
     from_builder: Optional[bool] = Field(False, exclude=True)
     # TODO CHECK if we can factor in process
     class_: Optional[str] = Field(alias='class', default='Workflow')
-    cwlVersion: str = "v1.2"
 
     # TODO CHECK should factor that too
     @property
