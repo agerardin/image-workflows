@@ -27,6 +27,11 @@ class CWLType_(BaseModel, metaclass=abc.ABCMeta):
     def is_valid_type(self, value : Any):
         pass 
 
+    @abc.abstractmethod
+    def serialize_value(self, value: Any):
+        pass
+    
+
 def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
     """Serialize CWLTypes based on actual type."""
     if isinstance(type, CWLBasicType):
@@ -46,6 +51,7 @@ def process_type(type):
 # Representation of any cwltypes.
 CWLType = Annotated[CWLType_, BeforeValidator(process_type), WrapSerializer(serialize_type)]
 
+
 class CWLArray(CWLType_):
     """Model that represents a CWL Array."""
     type: str = 'array'
@@ -63,6 +69,7 @@ class CWLArray(CWLType_):
     def serialize_value(self, value: Any):
         """Serialize input values."""
         return [ self.items.serialize_value(val) for val in value]
+
 
 class CWLBasicTypeEnum(Enum):
     """CWL basic types."""
@@ -100,7 +107,8 @@ class CWLBasicTypeEnum(Enum):
              return {"class": "File", "location": Path(value).as_posix()}
         else:
             return value
-        
+
+
 class CWLBasicType(CWLType_):
     """Model that wraps an enum representing the basic types."""
     type: CWLBasicTypeEnum
@@ -115,7 +123,7 @@ class CWLBasicType(CWLType_):
 
 
 def file_exists(path : Path):
-    """Check we have a file a disk and return resolved."""
+    """Check whether file exists and return resolved."""
     path = path.resolve()
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exists.")
@@ -125,7 +133,7 @@ def file_exists(path : Path):
 
 
 def directory_exists(path: Path):
-    """Check the provided path is an existing directory.
+    """Check whether the provided path is an existing directory.
     
     Returns: resolved path.
     Raises: exception is not found or not a file.
@@ -143,6 +151,7 @@ class NotAFileError(Exception):
     def __init__(self, path):
         super().__init__(f"{path} is not a file.")
 
+
 class NotADirectoryError(Exception):
     """Raised if path is not a file."""
     def __init__(self, path):
@@ -153,19 +162,23 @@ class IncompatibleTypeError(Exception):
     def __init__(self, type1, type2):
         super().__init__(f"{type1} != {type2}")
 
+
 class UnexpectedTypeError(Exception):
     """Raised if type is not supported."""
     def __init__(self, type):
         super().__init__(f"unexpected type : {type}")
+
 
 class IncompatibleValueError(Exception):
     """Raised if value cannot be assigned to a type."""
     def __init__(self, io_id, type, value):
         super().__init__(f"Cannot assign {value} to {io_id} of type {type}") 
 
+
 class CannotParseAdditionalInputParam(Exception):
     """Raised if the model for an additional input is not valid."""
     pass
+
 
 class UnsupportedProcessClass(Exception):
     """Raised if the cwl process type is not supported."""
@@ -246,7 +259,7 @@ class ResourceRequirement(ProcessRequirement):
 
 
 class NetworkAccess(ProcessRequirement):
-    """NetworkAccess"""
+    """NetworkAccess."""
     class_: str = "NetworkAccess"
     # TODO could make this stricter 
     # https://www.commonwl.org/v1.2/CommandLineTool.html#NetworkAccess
@@ -256,27 +269,33 @@ class InputBinding(BaseModel):
     pass
 
 
-# TODO CHANGE name. For now stick to cwl_parser naming
-# but should be CLTInputBinding
-class CommandLineBinding(InputBinding, extra='ignore'):
+class CommandLineInputBinding(InputBinding, extra='ignore'):
     """Describe how to translate the input parameter to a
-    program argument.
+    program argument
+    
+    cwl parser's counterpart is CommandLineBinding.
     """
     # TODO Capture other missing attributes.
     position: Optional[int] = None
 
-# TODO CHANGE name. For now stick to cwl_parser naming
-# but should be CLTOutputBinding
-class CommandOutputBinding(BaseModel):
+
+class CommandLineOutputBinding(BaseModel):
     """Describe how to translate the wrapped program result
     into a an output parameter.
+
+    cwl parser's counterpart is CommandOutputBinding.
     """
     glob: Optional[str] = None
     loadContents: Optional[bool] = None
     outputEval: Optional[str] = None
 
-# TODO CHECK maybe add checks for ParameterIds
-ParameterId = Annotated[str,[]]
+
+# TODO checks for parameter ids?
+def is_valid_parameter_id(str: id):
+    pass 
+
+ParameterId = Annotated[str,[is_valid_parameter_id]]
+
 
 class Parameter(BaseModel):
     """
@@ -293,8 +312,7 @@ class Parameter(BaseModel):
     optional: bool = Field(False, exclude=True)
     type: CWLType
 
-    # TODO TEST and FIX representation of cwl types.
-    # This needs to be recursively parsing nested structures.
+
     @field_validator("type", mode="before")
     @classmethod
     def transform_type(cls, type: CWLType, optional: Any = None) -> CWLType:
@@ -302,9 +320,8 @@ class Parameter(BaseModel):
         if isinstance(type, list):
             # CHECK for optional types
             if type[0] == 'null':
-                # TODO feels a bit hacky to modify the model this way.
-                # We could instead push that info in the type directly
-                # if CWLType becomes a pydantic model.
+                # TODO check alternatives.
+                # feels a bit hacky to modify the model this way.
                 optional.data['optional'] = True
                 return cls.transform_type(type[1])
             raise UnexpectedTypeError({type})
@@ -323,9 +340,6 @@ class OutputParameter(Parameter):
 class WorkflowInputParameter(InputParameter):
     """Workflow input parameters define how what inputs
     to provide to execute a workflow."""
-    # TODO CHECK for now, rely on step logic to generate config
-    #  we may revisit later
-    # value:Optional[Any] = Field(None, exclude=True)
     pass
 
 class WorkflowOutputParameter(OutputParameter):
@@ -341,16 +355,20 @@ class WorkflowOutputParameter(OutputParameter):
 class CommandInputParameter(InputParameter):
     """Command Line Tool input parameter.
     """
-    inputBinding: Optional[CommandLineBinding] = None
+    inputBinding: Optional[CommandLineInputBinding] = None
 
 
 class CommandOutputParameter(OutputParameter):
     """Command Line Tool output parameter.
     """
-    outputBinding: Optional[CommandOutputBinding] = None
+    outputBinding: Optional[CommandLineOutputBinding] = None
+
 
 # TODO CHECK if we need extra validation.
-StepInputId = Annotated[str,[]]
+def is_valid_stepIO_id(str: id):
+    pass 
+
+StepIOId = Annotated[str,[is_valid_stepIO_id]]
 
 class WorkflowStepInput(BaseModel):
     """A WorkflowStepInput describes how to provide
@@ -358,20 +376,24 @@ class WorkflowStepInput(BaseModel):
 
     It provides a ref to a workflow input or another step output.
     """
-    id: StepInputId
+    id: StepIOId
     source: str #TODO CHECK add typing for extra check if necessary.
+
+
+def generate_cwl_source_repr(step_id, io_id):
+    return step_id + "/" + io_id
+
 
 class AssignableWorkflowStepInput(WorkflowStepInput):
     """This a special kind of WorkflowStepInput that can
-    be dynamically assign a value or link to another workflow input 
-    or step output.
+    have values assigned to or can be linked to another 
+    workflow input or step output.
     """
     type: CWLType = Field(exclude=True)
     value: Any = None
     optional: bool = Field(exclude= True)
     step_id: str
 
-    # TODO CHECK we could use pydantic model instead
     def set_value(self, value: Any):
         """Assign a value to this step input or link it to another
         step output.
@@ -379,8 +401,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
         if isinstance(value, AssignableWorkflowStepOutput):
             if(self.type != value.type):
                 raise IncompatibleTypeError(self.type, value.type)
-            # TODO create a function for that
-            self.source = value.step_id + "/" + value.id
+            self.source = generate_cwl_source_repr(value.step_id, value.id)
         elif value is not None:
             if not self.type.is_valid_type(value):
                 raise IncompatibleValueError(self.id, self.type, value)
@@ -389,19 +410,18 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
             raise NotImplementedError("this case is not properly handled.")
         self.value = value
 
+
 class WorkflowStepOutput(BaseModel):
     """WorkflowStepOuput define the name of a step output
     that can be used to reference it in another step input or a workflow output.
     """
-    id: str
+    id: StepIOId
 
-# def convert_to_string(value: Any, handler) -> str:
-#     return handler(value.id)
 
 """WorkflowStepOutput are represented as string so we wrap the pydantic model to hide
 from the callers.
 """
-# WorkflowStepOutputId = Annotated[WorkflowStepOutput, WrapSerializer(convert_to_string)]
+
 
 class AssignableWorkflowStepOutput(WorkflowStepOutput):
     """This a special kind of WorkflowStepOutput that can
@@ -411,16 +431,24 @@ class AssignableWorkflowStepOutput(WorkflowStepOutput):
     value: str = None
     step_id: str = None
 
+
 WorkflowStepId = Annotated[str,[]]
 
 def filter_unused_optional(in_: Any, nxt: SerializerFunctionWrapHandler) -> list[WorkflowStepInput]:
+    """When serializing the model, ignore unused optional inputs.
+    
+    It seems that CWL does not have a construct for unset values.
+    Trying to pass unset inputs will result in a cwl failure, so
+    we need to strip them out.
+    """
     filtered_in_ = [input for input in in_ if input.source != "UNSET" ]
     return nxt(filtered_in_)
 
+# represents step inputs
 WorkflowStepInputs = Annotated[list[WorkflowStepInput], WrapSerializer(filter_unused_optional)]
 
+# represents step outputs
 WorkflowStepOutputs = Annotated[list[WorkflowStepOutput], []]
-
 
 class WorkflowStep(BaseModel):
     """Capture a workflow step.
@@ -433,7 +461,7 @@ class WorkflowStep(BaseModel):
     are wrapping and describe to  which workflow output they connect.
     """
 
-    # needed because of the reserved `in` keyword used in the model.
+    # needed because of the reserved `in` keyword is used in the model.
     model_config = ConfigDict(populate_by_name=True)
     id: WorkflowStepId
     run: str
@@ -441,19 +469,19 @@ class WorkflowStep(BaseModel):
     out: WorkflowStepOutputs = Field(...)
 
     @property
-    # TODO CHECK if we can type it to StepInputId
-    def _inputs(self) -> dict[str, WorkflowStepInput]:
+    def _inputs(self) -> dict[StepIOId, WorkflowStepInput]:
         """Generate a dict of WorkflowStepInputs for efficient retrieval."""
         return {input.id:input for input in self.in_}
 
     @property
-    # TODO CHECK if we can type it to StepInputId
-    def _outputs(self) -> dict[str, WorkflowStepInput]:
+    def _outputs(self) -> dict[StepIOId, WorkflowStepInput]:
         """Generate a dict of WorkflowStepOutputs for efficient retrieval."""
         return {output.id:output for output in self.out}
 
-    # TODO CHECK if we can type it to StepInputId
+    # TODO CHECK that ids exists?
     scatter: Optional[list[str]] = Field(None) # ref to scatter inputs
+
+    # TODO CHECK that.
     when: Optional[str] = Field(None) # ref to conditional execution clauses
 
     # TODO CHECK we may remove that later
@@ -478,20 +506,11 @@ class WorkflowStep(BaseModel):
     @field_validator("scatter", mode="before")
     @classmethod
     def preprocess_scatter(cls, out) -> Any:
-        """Single string are allowed in CWL, so wrap them in an array."""
+        """Single string are allowed in scatter filed in the CWL standard,
+        so wrap them in an array."""
         if isinstance(out, str):
             out = [out]
         return out
-
-    # TODO this could be move to the CWLModel pydantic model once we have it.
-    def promote_cwl_type(self, type: CWLType):
-        """When scattering over some inputs, we will provide arrays of value of the
-        original types.
-        """
-        if isinstance(type, CWLArray):
-            #TODO FIX
-            raise NotImplementedError("scattering CWLArray is not yet implemented.")
-        return {"type": "array", "items": type}
 
     def __setattr__(self, name: str, value: Any) -> None:
         """This is enabling assignment in our python DSL."""
@@ -539,20 +558,17 @@ class WorkflowStep(BaseModel):
     def save_config(self, path = Path()) -> Path:
         """Save the workflow configuration.
         Args:
-            - path : the path to the directory 
-            in which to save the config.
+            - path : the path to the directory in which to save the config.
+            Default to the current working directory.
+        
         Returns: the path to the config file.
         """
-        config = {input.id: self.serialize_value(input) for input in self.in_ if input.value is not None}
+        config = {
+            input.id: self.serialize_value(input) 
+            for input in self.in_ if input.value is not None
+            }
         
-        #TODO same code as process.save() so factor
-        path = path.resolve()
-        if not path.exists():
-            raise FileNotFoundError()
-        if not path.is_dir():
-            # TODO create exception for this?
-            # TODO fallback (like checking parent and using it?)
-            raise Exception(f"{path} is not a directory.")
+        path = directory_exists(path)
 
         file_path = path / (self.id + ".yaml")
         with open(file_path, "w", encoding="utf-8") as file:
@@ -606,6 +622,18 @@ class Process(BaseModel):
     label: Optional[str] = None
     requirements: Optional[list[ProcessRequirement]] = []
 
+    # TODO CHECK if necessary
+    @property
+    def _inputs(self) -> dict[ParameterId, InputParameter]:
+        """internal index to retrieve inputs efficiently."""
+        return {input.id: input for input in self.inputs}
+
+    # TODO CHECK if necessary
+    @property
+    def _outputs(self) -> dict[ParameterId, OutputParameter]:
+        """internal index to retrieve outputs efficiently."""
+        return {output.id: output for output in self.outputs}
+
     @computed_field
     @property
     def name(self) -> str:
@@ -653,8 +681,6 @@ class Process(BaseModel):
         """
         yaml_clt = cls._load(cwl_file)
         process_class = yaml_clt['class']
-
-
         if process_class == "Workflow":
             return Workflow(**yaml_clt)
         elif yaml_clt['class'] == "CommandLineTool":
@@ -671,13 +697,7 @@ class Process(BaseModel):
         Args:
             - path : the directories in which in to create the file.
         """
-        path = path.resolve()
-        if not path.exists():
-            raise FileNotFoundError()
-        if not path.is_dir():
-            # TODO CHECK we could implement a fallback (like checking parent and using it)
-            raise NotADirectoryError(path)
-
+        path = directory_exists(path)
         file_path = path / (self.name + ".cwl")
         serialized_process = self.model_dump(by_alias=True, exclude={'name'}, exclude_none=True)
         with open(file_path, "w", encoding="utf-8") as file:
@@ -697,18 +717,6 @@ class Workflow(Process):
     
     from_builder: Optional[bool] = Field(False, exclude=True)
     class_: Optional[str] = Field(alias='class', default='Workflow')
-
-    # TODO CHECK should factor that too
-    @property
-    def _inputs(self) -> dict[ParameterId, WorkflowInputParameter]:
-        """internal index to retrieve inputs efficiently."""
-        return {input.id: input for input in self.inputs}
-
-    # TODO CHECK should factor that too
-    @property
-    def _outputs(self) -> dict[ParameterId, WorkflowOutputParameter]:
-        """internal index to retrieve outputs efficiently."""
-        return {output.id: output for output in self.outputs}
     
     @field_validator("class_", mode="before")
     @classmethod
@@ -726,17 +734,6 @@ class CommandLineTool(Process):
     baseCommand: Optional[str] = None
     stdout: Optional[str] = None
     class_: Optional[str] = Field(alias='class', default='CommandLineTool')
-
-    @property
-    def _inputs(self) -> dict[ParameterId, CommandInputParameter]:
-        """internal index to retrieve inputs efficiently."""
-        return {input.id: input for input in self.inputs}
-
-    @property
-    def _outputs(self) -> dict[ParameterId, CommandOutputParameter]:
-        """internal index to retrieve outputs efficiently."""
-        return {output.id: output for output in self.outputs}
-
 
     @field_validator("class_", mode="before")
     @classmethod
