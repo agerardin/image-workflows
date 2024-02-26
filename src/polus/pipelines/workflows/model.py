@@ -661,8 +661,14 @@ class Process(BaseModel):
         return version
     
     @classmethod
-    def _load(cls, cwl_file: Path) -> Any :
-        cwl_file = file_exists(cwl_file)
+    def _load(cls, cwl_file: Union[Path,str]) -> Any :
+        """Load a Process from a patht or uri."""
+        if isinstance(cwl_file, Path):
+            # if a path is provided, make sure it exists.
+            # TODO check if we need this.
+            # maybe we should log a warning in case the user
+            # expects the file on disk?
+            cwl_file = file_exists(cwl_file)
         try:
             cwl_process = cwl_parser.load_document_by_uri(cwl_file)
         except CwlParserException:
@@ -675,8 +681,8 @@ class Process(BaseModel):
         return yaml_clt
 
     @classmethod
-    def load(cls, cwl_file: Path) -> 'Process':
-        """Load a Process from a cwl file.
+    def load(cls, cwl_file: Union[Path,str]) -> 'Process':
+        """Load a Process from a path or uri.
         
         Factory method for all subclasses.
         We use the reference cwl parser to get a standardized description.
@@ -979,24 +985,13 @@ class  WorkflowBuilder():
                     )
                     workflow_outputs.append(workflow_output)
                     
-            # TODO switch later
-            # step_process = Process.load(step.run)
-            # if step_process.class_ == "Workflow":
-            #     subworkflowFeatureRequirement = True
-
             # TODO That is where a context of loaded CLTs could be helpful.
             # So we don't keep reloading the same models.
+            step_process = Process.load(step.run)
             # Detect if we need to add subworkflowFeatureRequirement.
-            # TODO we could remove most of the code here.
-            cwl_file = cwl_parser.load_document_by_uri(step.run)
-            yaml_cwl = cwl_parser.save(cwl_file)
-            if cwl_file.class_ == "CommandLineTool":
-                clt = CommandLineTool(**yaml_cwl)
-            elif cwl_file.class_ == "Workflow":
-                workflow = Workflow(**yaml_cwl)
+            if step_process.class_ == "Workflow":
                 subworkflowFeatureRequirement = True
-            else:
-                raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
+            
 
             # TODO CHECK we can probably revisit and do this a bit differently.
             # The CWL standards allow us to do shallow validation.
