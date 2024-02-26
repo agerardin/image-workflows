@@ -21,6 +21,49 @@ from rich import print
 from enum import Enum
 
 
+class CWLType_(BaseModel, metaclass=abc.ABCMeta):
+    """Base Model for all CWL Types."""
+    @abc.abstractmethod
+    def is_valid_type(self, value : Any):
+        pass 
+
+def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
+    """Serialize CWLTypes based on actual type."""
+    if isinstance(type, CWLBasicType):
+        return type.type.value
+    else:
+        return {"type": "array", "items": serialize_type(type.items)}
+
+def process_type(type):
+    """Factory for the concrete type."""
+    if isinstance(type, str):
+        return CWLBasicType(type=type)
+    elif isinstance(type, dict):
+        return CWLArray(**type)
+    else:
+        return type
+
+# Representation of any cwltypes.
+CWLType = Annotated[CWLType_, BeforeValidator(process_type), WrapSerializer(serialize_type)]
+
+class CWLArray(CWLType_):
+    """Model that represents a CWL Array."""
+    type: str = 'array'
+    items: CWLType
+
+    def is_valid_type(self, value : Any):
+        """Check the python variable type can be assigned to this cwl type."""
+        if not isinstance(value, list):
+            return False
+        for item in value:
+            if not self.items.is_valid_type(item):
+                return False
+        return True
+
+    def serialize_value(self, value: Any):
+        """Serialize input values."""
+        return [ self.items.serialize_value(val) for val in value]
+
 class CWLBasicTypeEnum(Enum):
     """CWL basic types."""
 
@@ -57,34 +100,7 @@ class CWLBasicTypeEnum(Enum):
              return {"class": "File", "location": Path(value).as_posix()}
         else:
             return value
-
-class CWLType_(BaseModel, metaclass=abc.ABCMeta):
-    """Base Model for all CWL Types."""
-    @abc.abstractmethod
-    def is_valid_type(self, value : Any):
-        pass 
-
-
-def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
-    """Serialize CWLTypes based on actual type."""
-    if isinstance(type, CWLBasicType):
-        return type.type.value
-    else:
-        return {"type": "array", "items": serialize_type(type.items)}
-
-def processType(type):
-    """Factory for the concrete type."""
-    if isinstance(type, str):
-        return CWLBasicType(type=type)
-    elif isinstance(type, dict):
-        return CWLArray(**type)
-    else:
-        return type
-
-
-# Representation of any cwltypes.
-CWLType = Annotated[CWLType_, BeforeValidator(processType), WrapSerializer(serialize_type)]
-
+        
 class CWLBasicType(CWLType_):
     """Model that wraps an enum representing the basic types."""
     type: CWLBasicTypeEnum
@@ -96,23 +112,7 @@ class CWLBasicType(CWLType_):
     def serialize_value(self, value: Any):
         """Serialize input values."""
         return self.type.serialize_value(value)
-    
-class CWLArray(CWLType_):
-    """Model that represents a CWL Array"""
-    type: str = 'array'
-    items: CWLType
 
-    def is_valid_type(self, value : Any):
-        """Check the python variable type can be assigned to this cwl type."""
-        if not isinstance(value, list):
-            return False
-        # TODO we only check the first value
-        # should we check all values?
-        return self.items.is_valid_type(value[0])
-
-    def serialize_value(self, value: Any):
-        """Serialize input values."""
-        return [ self.items.serialize_value(val) for val in value]
 
 def file_exists(path : Path):
     """Check we have a file a disk and return resolved."""
