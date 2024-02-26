@@ -172,7 +172,7 @@ class UnexpectedTypeError(Exception):
 class IncompatibleValueError(Exception):
     """Raised if value cannot be assigned to a type."""
     def __init__(self, io_id, type, value):
-        super().__init__(f"Cannot assign {value} to {io_id} of type {type}") 
+        super().__init__(f'Cannot assign value: "{value}" to parameter: "{io_id}" of type: "{type}"') 
 
 
 class CannotParseAdditionalInputParam(Exception):
@@ -755,17 +755,22 @@ class StepBuilder():
     For each input/output of the clt, a corresponding step in/out is created.
     """
 
+    # TODO we could make this a default stragegy that 
+    # can be overriden by the user.
+    def generate_step_id(self, process: Process):
+        """Generate a step id wrapping the given process."""
+        # TODO we could remove the prefix
+        return "step_" + process.name
+
     def __init__(self, process : Process,
                  scatter : list[str] = None,
                  when: str = None,
                  add_inputs: list[dict] = None,
                  when_input_names: list[str] = None):
         
-        # Generate a step id from the clt name
-        step_id = "step_"+ process.name
+        step_id = self.generate_step_id(process)
         run = process.id
 
-        # TODO optional should be derived from type
         # TODO change. For now set source to "UNSET"
         inputs = [
             AssignableWorkflowStepInput(
@@ -814,7 +819,8 @@ class StepBuilder():
             for when_input_name in when_input_names:
                 if not (when_input_name in _process_inputs_ids):
                     if not(when_input_name in _add_inputs_ids):
-                        raise Exception("Input in when clause unknown. Please add its declaration to add_inputs arguments.")
+                        raise Exception("""Input in when clause unknown. 
+                            Please add its declaration to add_inputs arguments.""")
         
         if add_inputs:
             inputs = inputs + [
@@ -844,7 +850,6 @@ class StepBuilder():
         if isinstance(process, Workflow):
             for step in process.steps:
                 for input in step.in_:
-                    # TODO maybe create a workflow subclass for assignable workflow instead?
                     if isinstance(input, AssignableWorkflowStepInput):
                         if input.source in self.step._inputs:
                             self.step._inputs[input.source].value = input.value
@@ -852,14 +857,10 @@ class StepBuilder():
                             print(assignable_step_input)
 
 
-    # TODO this could be move to the CWLModel pydantic model once we have it.
     def _promote_cwl_type(self, type: CWLType):
-        """When scattering over some inputs, we will provide arrays of value of the
+        """When scattering over some inputs, we need to provide arrays of value of the
         original types.
         """
-        if isinstance(type, CWLArray):
-            #TODO FIX
-            raise NotImplementedError("scattering CWLArray is not yet implemented.")
         return CWLArray(items=type)
 
 
