@@ -1,5 +1,6 @@
 """Model for the workflow builder DSL."""
 
+import abc
 from typing import Annotated, Union
 from pydantic import (
     BaseModel, BeforeValidator, ConfigDict, 
@@ -11,6 +12,7 @@ from pydantic.functional_validators import (
     AfterValidator, field_validator
 )
 import cwl_utils.parser as cwl_parser
+from schema_salad.exceptions import ValidationException as CwlParserException
 from urllib.parse import urlparse, unquote
 from pathlib import Path
 import yaml
@@ -32,7 +34,7 @@ class CWLBasicTypeEnum(Enum):
     FILE = "File"
     DIRECTORY = "Directory"
 
-    def isValidType(self, value: Any):
+    def is_valid_type(self, value: Any):
         """Check if the python variable type can be assigned to this cwl type."""
         if self == CWLBasicTypeEnum.STRING:
             return isinstance(value, str)
@@ -56,9 +58,12 @@ class CWLBasicTypeEnum(Enum):
         else:
             return value
 
-class CWLType_(BaseModel):
+class CWLType_(BaseModel, metaclass=abc.ABCMeta):
     """Base Model for all CWL Types."""
-    pass
+    @abc.abstractmethod
+    def is_valid_type(self, value : Any):
+        pass 
+
 
 def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
     """Serialize CWLTypes based on actual type."""
@@ -80,14 +85,13 @@ def processType(type):
 # Representation of any cwltypes.
 CWLType = Annotated[CWLType_, BeforeValidator(processType), WrapSerializer(serialize_type)]
 
-
 class CWLBasicType(CWLType_):
     """Model that wraps an enum representing the basic types."""
     type: CWLBasicTypeEnum
 
-    def isValidType(self, value):
+    def is_valid_type(self, value):
         """Check if the given value is represented by this type."""
-        return self.type.isValidType(value)
+        return self.type.is_valid_type(value)
 
     def serialize_value(self, value: Any):
         """Serialize input values."""
@@ -98,13 +102,13 @@ class CWLArray(CWLType_):
     type: str = 'array'
     items: CWLType
 
-    def isValidType(self, value : Any):
+    def is_valid_type(self, value : Any):
         """Check the python variable type can be assigned to this cwl type."""
         if not isinstance(value, list):
             return False
         # TODO we only check the first value
         # should we check all values?
-        return self.items.isValidType(value[0])
+        return self.items.is_valid_type(value[0])
 
     def serialize_value(self, value: Any):
         """Serialize input values."""
@@ -378,7 +382,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
             # TODO create a function for that
             self.source = value.step_id + "/" + value.id
         elif value is not None:
-            if not self.type.isValidType(value):
+            if not self.type.is_valid_type(value):
                 raise IncompatibleValueError(self.id, self.type, value)
         else:
             # TODO remove when poc is completed.
@@ -621,6 +625,7 @@ class Process(BaseModel):
     @field_validator("cwlVersion", mode="before")
     @classmethod
     def validate_class(cls, version: str) -> str:
+        # TODO Test this work as intended
         if version and version != "v1.2": 
             raise Exception(f"Unsupported version: {version}. Only v1.2 is supported.") 
         return version
@@ -628,7 +633,10 @@ class Process(BaseModel):
     @classmethod
     def _load(cls, cwl_file: Path) -> Any :
         cwl_file = file_exists(cwl_file)
-        cwl_process = cwl_parser.load_document_by_uri(cwl_file)
+        try:
+            cwl_process = cwl_parser.load_document_by_uri(cwl_file)
+        except CwlParserException:
+            raise BadCwlProcessFile(cwl_file)
         # TODO CHECK save rewrite ids and runs ref.
         # Make sure this is not an issue.
         # In particular rewrite runs can be an issue if not managed properly
@@ -643,11 +651,9 @@ class Process(BaseModel):
         Factory method for all subclasses.
         We use the reference cwl parser to get a standardized description.
         """
-        try:
-            yaml_clt = cls._load(cwl_file)
-            process_class = yaml_clt['class']
-        except:
-            raise BadCwlProcessFile(cwl_file)
+        yaml_clt = cls._load(cwl_file)
+        process_class = yaml_clt['class']
+
 
         if process_class == "Workflow":
             return Workflow(**yaml_clt)

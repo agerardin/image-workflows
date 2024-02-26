@@ -24,7 +24,7 @@ outputs:
     type: Directory
 requirements:
   DockerRequirement:
-    dockerPull: polusai/ome-converter-plugin:0.3.1
+    dockerPull: polusai/ome-converter-plugin:0.3.0
   InitialWorkDirRequirement:
     listing:
     - entry: $(inputs.outDir)
@@ -32,3 +32,7 @@ requirements:
   InlineJavascriptRequirement: {}
   NetworkAccess:
     networkAccess: true
+#   EnvVarRequirement:
+# # See https://www.commonwl.org/user_guide/topics/environment-variables.html
+#     envDef:
+#       HOME: /home/polusai
