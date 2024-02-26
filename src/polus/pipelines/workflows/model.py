@@ -24,13 +24,13 @@ from enum import Enum
 class CWLType_(BaseModel, metaclass=abc.ABCMeta):
     """Base Model for all CWL Types."""
     @abc.abstractmethod
-    def is_valid_type(self, value : Any):
+    def is_value_assignable(self, value : Any):
         pass 
 
     @abc.abstractmethod
     def serialize_value(self, value: Any):
         pass
-    
+
 
 def serialize_type(type: Any, nxt: SerializerFunctionWrapHandler = None) -> Any:
     """Serialize CWLTypes based on actual type."""
@@ -57,12 +57,12 @@ class CWLArray(CWLType_):
     type: str = 'array'
     items: CWLType
 
-    def is_valid_type(self, value : Any):
+    def is_value_assignable(self, value : Any):
         """Check the python variable type can be assigned to this cwl type."""
         if not isinstance(value, list):
             return False
         for item in value:
-            if not self.items.is_valid_type(item):
+            if not self.items.is_value_assignable(item):
                 return False
         return True
 
@@ -84,7 +84,7 @@ class CWLBasicTypeEnum(Enum):
     FILE = "File"
     DIRECTORY = "Directory"
 
-    def is_valid_type(self, value: Any):
+    def is_value_assignable(self, value: Any):
         """Check if the python variable type can be assigned to this cwl type."""
         if self == CWLBasicTypeEnum.STRING:
             return isinstance(value, str)
@@ -113,9 +113,9 @@ class CWLBasicType(CWLType_):
     """Model that wraps an enum representing the basic types."""
     type: CWLBasicTypeEnum
 
-    def is_valid_type(self, value):
+    def is_value_assignable(self, value):
         """Check if the given value is represented by this type."""
-        return self.type.is_valid_type(value)
+        return self.type.is_value_assignable(value)
 
     def serialize_value(self, value: Any):
         """Serialize input values."""
@@ -403,7 +403,7 @@ class AssignableWorkflowStepInput(WorkflowStepInput):
                 raise IncompatibleTypeError(self.type, value.type)
             self.source = generate_cwl_source_repr(value.step_id, value.id)
         elif value is not None:
-            if not self.type.is_valid_type(value):
+            if not self.type.is_value_assignable(value):
                 raise IncompatibleValueError(self.id, self.type, value)
         else:
             # TODO remove when poc is completed.
