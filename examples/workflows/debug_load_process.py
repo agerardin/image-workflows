@@ -22,5 +22,6 @@ test_load_process(test_data_dir, filename)
 filename = "nested_types3.cwl"
 test_load_process(test_data_dir, filename)
 
-filename = "echo_string_v10.cwl"
+filename = "echo_string.cwl"
 test_load_process(test_data_dir, filename)
+

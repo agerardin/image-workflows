@@ -710,7 +710,7 @@ class Process(BaseModel):
         serialized_process = self.model_dump(by_alias=True, exclude={'name'}, exclude_none=True)
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(yaml.dump(serialized_process))
-            return file_path 
+            return file_path
 
 
 class Workflow(Process):
@@ -732,6 +732,11 @@ class Workflow(Process):
         if class_ and class_ != "Workflow": 
             raise Exception("bad class", class_) 
         return class_
+    
+    def pull_refs(self):
+        for step in self.steps:
+            print(step.run)
+            self.load(step.run)
 
 class CommandLineTool(Process):
     """Represent a CommandLineTool.
@@ -947,13 +952,11 @@ class  WorkflowBuilder():
                             continue
                         for _input in _other_step.in_:
                             if _input.source == _ref:
-                                # NOTE test is quite indirect.
-                                # a better approach would be to recursively check complex types
-                                # for base types.
-                                if (isinstance(_input.type, CWLBasicType)
-                                and (
-                                    _input.type != CWLBasicType(type=CWLBasicTypeEnum.DIRECTORY)
-                                    or _input.type != CWLBasicType(type=CWLBasicTypeEnum.FILE))
+                                # NOTE Review later. It may be allowable to link (nested) array of dirs.
+                                # But then we cannot anticipate the number of directories to create 
+                                # before runtime.
+                                if not(_input.type != CWLBasicType(type=CWLBasicTypeEnum.DIRECTORY)
+                                    or _input.type != CWLBasicType(type=CWLBasicTypeEnum.FILE)
                                 ):
                                     raise UnsupportedCaseError("""Error while building workflow.
                                         Error generating while default workflow inputs.
