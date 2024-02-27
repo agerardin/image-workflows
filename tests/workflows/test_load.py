@@ -21,7 +21,7 @@ def test_load_clt_old_version(test_data_dir: Path, filename: str):
     cwl_file = test_data_dir / filename
     CommandLineTool.load(cwl_file)
 
-@pytest.mark.parametrize("filename", ["workflow5.cwl", "workflow7.cwl", "subworkflow1.cwl"])
+@pytest.mark.parametrize("filename", ["workflow5.cwl", "workflow7.cwl", "subworkflow1.cwl","workflow3.cwl"])
 def test_load_workflow(test_data_dir: Path, filename: str):
     """Test Workflow factory method."""
     cwl_file = test_data_dir / filename
@@ -38,9 +38,11 @@ def test_load_process(test_data_dir: Path, filename: str):
 # So if we wanted to more validation, we would need to recursively pull all references.
 # NOTE we could provide a Context object to collect definition
 # instead of parsing clts over and over.
-@pytest.mark.skip(reason="not implemented")
-def test_recursive_load():
-    pass
+@pytest.mark.parametrize("filename", ["workflow5.cwl"])
+def test_recursive_load_workflow(test_data_dir: Path, filename: str):
+    """Test Recursive load of processes."""
+    cwl_file = test_data_dir / filename
+    Process.load(cwl_file, recursive=True)
 
 
 

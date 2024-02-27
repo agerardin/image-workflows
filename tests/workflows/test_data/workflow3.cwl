@@ -17,7 +17,7 @@ steps:
     out: [message_string]
 
   uppercase:
-    run: uppercase.cwl
+    run: uppercase2_wic_compatible3.cwl
     in:
       message: echo/message_string
     out: [uppercase_message]

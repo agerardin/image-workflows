@@ -19,6 +19,13 @@ import yaml
 from typing import Optional, Any
 from rich import print
 from enum import Enum
+import logging
+from os import environ
+
+logging.basicConfig(format="%(name)-8s - %(levelname)-8s - %(message)s")
+logger = logging.getLogger(__name__)
+POLUS_LOG = getattr(logging, environ.get("POLUS_LOG", "INFO"))
+logger.setLevel(POLUS_LOG)
 
 
 class CWLType_(BaseModel, metaclass=abc.ABCMeta):
@@ -662,39 +669,60 @@ class Process(BaseModel):
     
     @classmethod
     def _load(cls, cwl_file: Union[Path,str]) -> Any :
-        """Load a Process from a patht or uri."""
+        """Load a Process from a path or uri."""
         if isinstance(cwl_file, Path):
-            # if a path is provided, make sure it exists.
-            # TODO check if we need this.
-            # maybe we should log a warning in case the user
-            # expects the file on disk?
             cwl_file = file_exists(cwl_file)
         try:
             cwl_process = cwl_parser.load_document_by_uri(cwl_file)
         except CwlParserException:
             raise BadCwlProcessFile(cwl_file)
-        # TODO CHECK save rewrite ids and runs ref.
-        # Make sure this is not an issue.
-        # In particular rewrite runs can be an issue if not managed properly
-        # (could have clashing definitions).
-        yaml_clt = cwl_parser.save(cwl_process)
-        return yaml_clt
+
+        yaml_cwl = cwl_parser.save(cwl_process)
+
+        if yaml_cwl['class'] == "Workflow" and yaml_cwl.get("steps"):
+            # by default, save rewrite all ids and refs.
+            # This would prevent us for recursively loading subprocesses so
+            # for workflow we substitute with the original run references.
+            full_refs_cwl = cwl_parser.save(cwl_process, relative_uris=False)
+            runs = [step["run"] for step in full_refs_cwl["steps"]]
+            for (step, run) in zip(yaml_cwl["steps"], runs):
+                step["run"] = run
+
+        return yaml_cwl
 
     @classmethod
-    def load(cls, cwl_file: Union[Path,str]) -> 'Process':
+    def load(cls, cwl_file: Union[Path,str], recursive=False, context = {}) -> 'Process':
         """Load a Process from a path or uri.
         
         Factory method for all subclasses.
         We use the reference cwl parser to get a standardized description.
-        """
+
+        Args: 
+            cwl_file: the path to the cwl file to load or an URI describing the resource location.
+            recursive: if set to True, attempts to recursively load all cwl files referenced.
+            context: Collect all cwl models found.
+
+        Returns:
+            The process object.
+        """ 
+
         yaml_clt = cls._load(cwl_file)
         process_class = yaml_clt['class']
         if process_class == "Workflow":
-            return Workflow(**yaml_clt)
+            process = Workflow(**yaml_clt)
+            if recursive:
+                for step in process.steps:
+                    Process.load(step.run, recursive=recursive, context=context)
+            # NOTE for now we just load all references
+            # and check they are accessible.
+            # We could also perform extra validation if desired.
         elif yaml_clt['class'] == "CommandLineTool":
-            return CommandLineTool(**yaml_clt)
+            process = CommandLineTool(**yaml_clt)
         else:
             raise UnsupportedProcessClass(process_class)
+        
+        context[process.id] = process
+        return process
     
 
     def save(self, path = Path()) -> Path:
@@ -733,10 +761,6 @@ class Workflow(Process):
             raise Exception("bad class", class_) 
         return class_
     
-    def pull_refs(self):
-        for step in self.steps:
-            print(step.run)
-            self.load(step.run)
 
 class CommandLineTool(Process):
     """Represent a CommandLineTool.
@@ -769,7 +793,7 @@ class StepBuilder():
     For each input/output of the clt, a corresponding step in/out is created.
     """
 
-    # TODO we could make this a default stragegy that 
+    # TODO we could make this a default strategy that 
     # can be overriden by the user.
     def generate_step_id(self, process: Process):
         """Generate a step id wrapping the given process."""
@@ -887,6 +911,14 @@ class  WorkflowBuilder():
     """
     def __init__(self, id: str, *args: Any, **kwds: Any):
 
+        context = {}
+        recursive = True
+
+        options = kwds.get("options")
+        if options:
+            recursive = options.get("recursive")
+            context = options.get("context")
+
         kwds.setdefault("steps", [])
         # Collect all step inputs and create a workflow input for each
         # Collect all step outputs and create a workflow output for each
@@ -906,7 +938,8 @@ class  WorkflowBuilder():
         
         def generate_default_input_path(step, input):
             """Generate default input path for synthetic directories or files."""
-            # NOTE there is a bug in cwl that prevents creating nested directories.
+            # NOTE there is a bug/limitation in cwl that prevents creating nested
+            # directories.
             # When copying back staged data, cwl only copies the leaf directory. 
             # Name clashes will occur if several inputs have the same name.
             # so we need to create unique directory names for each input.
@@ -920,16 +953,24 @@ class  WorkflowBuilder():
         inlineJavascriptRequirement = False
 
         for step in kwds.get("steps"):
+            # if we have the definition already in context, just use it.
+            # Subprocesses will not be loaded either.
+            if context and context.get(step.run):
+                context.get(step.run)
+            else:
+                Process.load(step.run, recursive=recursive, context=context)
+
             if step.scatter:
                 scatterRequirement = True
+
             if step.when:
                 inlineJavascriptRequirement = True
+
             for input in step.in_:
                 # Only create workflows inputs and connect to them
                 # if step inputs are not already connected to another step output.
                 if input.source != 'UNSET':
                     continue
-
                 # Ignore unset optional inputs
                 # NOTE needed because the cwl standard does not allow for unset values.
                 if input.optional and input.value is None:
@@ -942,7 +983,6 @@ class  WorkflowBuilder():
                 # This allows further manual customization.
                 # TODO we could also expose that the user and have him customized
                 # the generated name.
-                # TODO CHECK this logic again, it may probably be written more simply.
                 if input.id in step._outputs:
                     # if input is output, build its source representation
                     _ref = generate_cwl_source_repr(step.id, input.id)
@@ -987,53 +1027,13 @@ class  WorkflowBuilder():
                         outputSource= step.id + "/" + output.id
                     )
                     workflow_outputs.append(workflow_output)
-                    
-            # TODO That is where a context of loaded CLTs could be helpful.
-            # So we don't keep reloading the same models.
-            step_process = Process.load(step.run)
-            # Detect if we need to add subworkflowFeatureRequirement.
-            if step_process.class_ == "Workflow":
+        
+        # Detect if we need to add subworkflowFeatureRequirement.
+        for process in context.values():
+            if process.class_ == "Workflow":
                 subworkflowFeatureRequirement = True
-            
+                break
 
-            # TODO CHECK we can probably revisit and do this a bit differently.
-            # The CWL standards allow us to do shallow validation.
-            # Now we can also recursively check before execution that all connections
-            # are indeed valid.
-            # At the very least, in the current usage of compute for example, we need 
-            # to ship every cwl we are referencing so we will need at a minimum to collect
-            # all cwl files beforehand.
-
-            ## TODO That is where a context of loaded CLTs could be helpful.
-            ## So we don't keep reloading the same models.
-
-            # Collect types of each CLT inputs referenced.
-            # TODO probably should do it anyhow because we could parse
-            # non generated steps.
-            # Check that generated steps have correct input types?
-            # step_types = {}
-            # cwl_file = cwl_parser.load_document_by_uri(step.run)
-            # yaml_cwl = cwl_parser.save(cwl_file)
-            # if cwl_file.class_ == "CommandLineTool":
-            #     clt = CommandLineTool(**yaml_cwl)
-            #     step_types[step.id] = clt._outputs
-            # elif cwl_file.class_ == "Workflow":
-            #     workflow = Workflow(**yaml_cwl)
-            #     step_types[step.id] = workflow._outputs
-            #     kwds.setdefault("requirements", [{"class": "SubworkflowFeatureRequirement"}])
-            # else:
-            #     raise Exception(f"Invalid Cwl Class : {cwl_file.class_}")
-
-            # # TODO do not hand generate outputSource but create a method to 
-            # # encapsulate this
-            # for output in step.out:
-            #     out_type = f"{step_types[step.id][output.id].type}[]" if step.scatter else step_types[step.id][output.id].type   
-            #     workflow_output = {
-            #         "id": generate_workflow_io_id(id, step.id, output.id),
-            #         "type": out_type,
-            #         "outputSource": step.id + "/" + output.id
-            #     }
-            # worklfow_outputs.append(workflow_output)
         if scatterRequirement:
             # TODO CHECK cwl spec. if multiple inputs, we also need to add a scatter method.
             requirements.append(ScatterFeatureRequirement())
@@ -1045,8 +1045,11 @@ class  WorkflowBuilder():
         kwds.setdefault("inputs", workflow_inputs)
         kwds.setdefault("outputs", workflow_outputs)
         kwds.setdefault("requirements", requirements)
-        # NOTE for this to work, we would need to serialize to disk
-        # TODO CHECK if there is a better way to solve this
+
+        # Generate an id for this workflow as an uri.
+        # TODO For now the id point to the current working directory.
+        # Provide an option to store this workflow definition
+        # in another location.
         id = (Path() / (id + ".cwl")).resolve().as_uri()
         kwds.setdefault("id", id)
 

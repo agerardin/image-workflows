@@ -15,11 +15,11 @@ steps:
     source: msg
   out:
   - message_string
-  run: echo_string.cwl
+  run: file:///Users/antoinegerardin/Documents/projects/polus-pipelines/tests/workflows/test_data/echo_string.cwl
 - id: touch
   in:
   - id: touchfiles
     source: echo/message_string
   out:
   - output
-  run: touch_single.cwl
+  run: file:///Users/antoinegerardin/Documents/projects/polus-pipelines/tests/workflows/test_data/touch_single.cwl
